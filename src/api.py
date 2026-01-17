@@ -2,25 +2,39 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
+from contextlib import asynccontextmanager # 1. 导入生命周期管理
 
 # 导入复用的模块
+import auth # 导入认证路由器
 from models import CampusGraph
 from algorithms import dijkstra_search
 from utils import load_graph_from_json, get_data_path
+# 记事本
+import diary # <--- 新增导入
 
-# --- 1. 定义数据格式 ---
-class NavigateRequest(BaseModel):
-    start_id: int
-    end_id: int
-    strategy: str = 'dist'
+# --- 1. 全局变量 & 生命周期定义 (必须在 app 创建之前) ---
+global_graph: Optional[CampusGraph] = None
 
-class NavigateResponse(BaseModel):
-    path_ids: List[int]
-    path_names: List[str]
-    total_cost: float
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 【启动时运行】
+    global global_graph
+    try:
+        path = get_data_path()
+        global_graph = load_graph_from_json(path)
+        print(f"✅ 地图加载成功，包含 {len(global_graph.spots)} 个景点")
+    except Exception as e:
+        print(f"❌ 启动失败: {e}")
+    
+    yield  # 程序暂停在这里等待请求
+    
+    # 【关闭时运行】
+    print("🛑 服务已关闭")
 
-# --- 2. 初始化 App ---
-app = FastAPI(title="校园旅游系统")
+# --- 2. 初始化 App (只创建这一次！) ---
+app = FastAPI(title="校园旅游系统", lifespan=lifespan)
+
+# --- 3. 配置 App (中间件 & 路由) ---
 
 # 允许跨域 (CORS)
 app.add_middleware(
@@ -31,26 +45,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- 3. 全局变量 & 启动加载 ---
-global_graph: Optional[CampusGraph] = None
+# 挂载 Auth 路由
+app.include_router(auth.router)
+app.include_router(diary.router) # <--- 新增挂载
 
-@app.on_event("startup")
-def startup_event():
-    global global_graph
-    try:
-        path = get_data_path()
-        global_graph = load_graph_from_json(path)
-        print(f"✅ 地图加载成功，包含 {len(global_graph.spots)} 个景点")
-    except Exception as e:
-        print(f"❌ 启动失败: {e}")
+# --- 4. 定义数据格式 ---
+class NavigateRequest(BaseModel):
+    start_id: int
+    end_id: int
+    strategy: str = 'dist'
 
-# --- 4. 接口定义 ---
+class NavigateResponse(BaseModel):
+    path_ids: List[int]
+    path_names: List[str]
+    total_cost: float
+
+# --- 5. 接口定义 ---
 
 @app.get("/")
 def read_root():
     return {"status": "ok"}
 
-# 【修改点】前端 app.js 请求的是 /graph，而且需要 edges
 @app.get("/graph")
 def get_graph_data():
     """获取完整的地图数据（节点+边），供前端绘图"""
@@ -71,7 +86,6 @@ def get_graph_data():
 
     # 2. 整理边数据
     edges_data = []
-    # 遍历邻接表，为了防止前端重复画线，我们只取 u < v 的边（因为是无向图）
     for u_id, roads in global_graph.adj.items():
         for road in roads:
             if road.u < road.v:  # 简单去重
@@ -79,11 +93,10 @@ def get_graph_data():
                     "u": road.u,
                     "v": road.v,
                     "dist": road.distance,
-                    "type": road.type, # 注意：确保 models.py 里 Road 类有 type 属性
+                    "type": road.type, 
                     "crowding": road.crowding
                 })
 
-    # 返回前端需要的结构
     return {
         "nodes": nodes_data,
         "edges": edges_data

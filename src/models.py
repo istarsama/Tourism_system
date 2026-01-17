@@ -1,3 +1,7 @@
+from typing import Optional, List
+from datetime import datetime
+from sqlmodel import SQLModel, Field
+#########################################
 # src/models.py
 class Spot:
     """景点/节点类"""
@@ -52,3 +56,30 @@ class CampusGraph:
         
     def get_spot_name(self, id):  # 根据ID获取景点名称
         return self.spots[id].name if id in self.spots else "Unknown"  # 存在则返回名称，否则返回Unknown
+    
+    
+#########################################
+class User(SQLModel, table=True):
+    """用户表"""
+    # primary_key=True 表示这是主键，数据库会自动生成 1, 2, 3...
+    id: Optional[int] = Field(default=None, primary_key=True)
+    # index=True 表示我们会经常用用户名来查人，加索引稍微快点
+    # unique=True 表示用户名不能重复
+    username: str = Field(index=True, unique=True)
+    # 存加密后的乱码，千万别存明文！
+    password_hash: str 
+    created_at: datetime = Field(default_factory=datetime.now)
+
+class Diary(SQLModel, table=True):
+    """旅游日记表"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    
+    # 外键：关联到是哪个用户写的
+    user_id: int = Field(foreign_key="user.id")
+    # 关联到是哪个景点 (我们用 ID 来关联，比如 1代表北邮西门)
+    spot_id: int 
+    
+    title: str
+    content: str
+    score: float = Field(default=5.0) # 评分
+    created_at: datetime = Field(default_factory=datetime.now)
