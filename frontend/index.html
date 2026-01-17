@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园智能导游系统</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>🎒 校园导游</h1>
+            
+            <div class="control-panel">
+                <div class="status-box">
+                    <p>起点: <span id="start-node" class="placeholder">请在地图上点击</span></p>
+                    <p>终点: <span id="end-node" class="placeholder">请在地图上点击</span></p>
+                </div>
+
+                <div class="algorithm-select">
+                    <label>导航策略:</label>
+                    <select id="strategy">
+                        <option value="dist">最短距离</option>
+                        <option value="time">最少时间(预留)</option>
+                    </select>
+                </div>
+
+                <button id="nav-btn" disabled>开始导航</button>
+                <button id="reset-btn">重置</button>
+            </div>
+
+            <div id="result-panel" class="hidden">
+                <h3>导航结果</h3>
+                <p>总消耗: <span id="total-cost">-</span></p>
+                <div class="path-list">
+                    <h4>途径路线:</h4>
+                    <ol id="path-steps">
+                        <!-- 动态生成 -->
+                    </ol>
+                </div>
+            </div>
+
+            <div class="node-info hidden" id="node-info">
+                <h3>景点详情</h3>
+                <h4 id="info-name"></h4>
+                <p id="info-category"></p>
+                <p id="info-desc"></p>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <canvas id="mapCanvas"></canvas>
+            <div class="loading" id="loading">地图加载中...</div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
