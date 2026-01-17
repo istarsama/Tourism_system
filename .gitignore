@@ -1,0 +1,17 @@
+# Python 编译文件
+__pycache__/
+*.pyc
+
+# uv 和 虚拟环境 (绝对不能上传这个！)
+.venv/
+venv/
+
+# 环境变量 (防止密钥泄露)
+.env
+
+# 操作系统生成的垃圾文件
+.DS_Store
+Thumbs.db
+
+# VS Code 配置 (个人配置不需要同步)
+.vscode/
