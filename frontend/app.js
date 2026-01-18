@@ -44,8 +44,11 @@ let transform = {
  * ==================================================================================
  */
 // 导航与主体 UI
-const elStart = document.getElementById('start-node');
-const elEnd = document.getElementById('end-node');
+const elStartInput = document.getElementById('start-node-input');
+const elStartList = document.getElementById('start-node-list');
+const elEndInput = document.getElementById('end-node-input');
+const elEndList = document.getElementById('end-node-list');
+
 const btnNav = document.getElementById('nav-btn');
 const btnReset = document.getElementById('reset-btn');
 const elLoading = document.getElementById('loading');
@@ -144,10 +147,13 @@ async function apiCall(endpoint, method = 'GET', body = null, isFile = false) {
  */
 
 async function init() {
+    console.log("App init starting...");
     updateAuthUI(); // 更新登录界面状态
     try {
+        console.log("Fetching graph data...");
         // 请求后端获取图结构数据 (节点和边)
         const data = await apiCall('/graph');
+        console.log("Graph data received:", data);
         
         allNodes = data.nodes;
         allEdges = data.edges;
@@ -155,13 +161,18 @@ async function init() {
         // 构建快速查找表 index: id -> node
         allNodes.forEach(n => nodeMap[n.id] = n);
         
+        console.log("Fitting map to screen...");
         fitMapToScreen(); // 自动调整地图视角适配屏幕
+        
+        console.log("Initial render...");
         render();         // 绘制地图
+        
         elLoading.style.display = 'none'; // 隐藏加载提示
         
     } catch (err) {
-        elLoading.innerText = '加载失败，请确保后端服务已启动';
-        console.error(err);
+        elLoading.innerText = '加载失败: ' + err.message;
+        elLoading.style.color = 'red';
+        console.error("Init Error:", err);
     }
 }
 
@@ -538,11 +549,14 @@ let dragOffsetY = 0;
 elChatHeader.style.cursor = 'move';
 elChatHeader.style.userSelect = 'none';
 
+let chatDragDistance = 0;
+
 elChatHeader.addEventListener('mousedown', (e) => {
     // 忽略最小化按钮的点击
     if (e.target.id === 'chat-toggle') return;
 
     isDragging = true;
+    chatDragDistance = 0;
     const rect = elChatPanel.getBoundingClientRect();
     dragOffsetX = e.clientX - rect.left;
     dragOffsetY = e.clientY - rect.top;
@@ -556,6 +570,9 @@ elChatHeader.addEventListener('mousedown', (e) => {
 
 document.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
+    
+    chatDragDistance += Math.hypot(e.movementX, e.movementY);
+    
     e.preventDefault(); // 防止文字选中
     
     let newX = e.clientX - dragOffsetX;
@@ -578,24 +595,28 @@ let isChatOpen = true;
 
 function toggleChat() {
     isChatOpen = !isChatOpen;
-    const btn = document.getElementById('chat-toggle');
+    // const btn = document.getElementById('chat-toggle'); // Button removed
+    
     if (isChatOpen) {
-        elChatPanel.style.height = '400px';
-        btn.innerText = '_';
+        // 展开状态
+        elChatPanel.classList.remove('collapsed');
+        // 清除可能由拖拽产生的内联宽高限制 (如果有)
+        elChatPanel.style.height = ''; 
+        elChatPanel.style.width = '';
     } else {
-        elChatPanel.style.height = '40px';
-        btn.innerText = '□';
+        // 折叠(Logo)状态
+        elChatPanel.classList.add('collapsed');
+        // 折叠时保持在当前位置
     }
 }
 
-// 仅点击按钮时触发
-document.getElementById('chat-toggle').addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleChat();
+// 标题栏点击切换 (兼顾展开与折叠，并过滤拖拽操作)
+elChatHeader.addEventListener('click', (e) => {
+    // 只有在未发生拖拽时才触发点击
+    if (chatDragDistance < 5) {
+        toggleChat();
+    }
 });
-
-// 双击标题栏也能切换
-elChatHeader.addEventListener('dblclick', toggleChat);
 
 
 // --- 3. 消息发送逻辑 ---
@@ -670,30 +691,22 @@ function handleNodeClick(node) {
     if (startNodeId === null) {
         // 还没选起点 -> 设为起点
         startNodeId = node.id;
-        elStart.innerText = node.name;
-        elStart.classList.remove('placeholder');
-        elStart.classList.add('selected');
+        elStartInput.value = node.name;
     } else if (endNodeId === null && node.id !== startNodeId) {
         // 有起点没终点 -> 设为终点
         endNodeId = node.id;
-        elEnd.innerText = node.name;
-        elEnd.classList.remove('placeholder');
-        elEnd.classList.add('selected');
+        elEndInput.value = node.name;
         
         btnNav.disabled = false; // 激活导航按钮
     } else {
          // 已满，或者是再次点击 -> 取消选择
          if (node.id === startNodeId) {
             startNodeId = null;
-            elStart.innerText = '请在地图上点击';
-            elStart.classList.add('placeholder');
-            elStart.classList.remove('selected');
+            elStartInput.value = '';
             btnNav.disabled = true;
         } else if (node.id === endNodeId) {
             endNodeId = null;
-            elEnd.innerText = '请在地图上点击';
-            elEnd.classList.add('placeholder');
-            elEnd.classList.remove('selected');
+            elEndInput.value = '';
             btnNav.disabled = true;
         }
     }
@@ -858,59 +871,172 @@ function toScreen(x, y) {
 }
 
 // --- 渲染引擎 ---
+
+// 直接从 HTML 获取预加载的地图背景图
+const mapBgImage = document.getElementById('mapBgImage');
+
+// 图片加载完成后重绘
+if (mapBgImage.complete && mapBgImage.naturalWidth > 0) {
+    // 图片已缓存，页面加载时已就绪
+    console.log('地图背景图已加载 (cached)');
+} else {
+    mapBgImage.onload = () => {
+        console.log('地图背景图加载完成');
+        if (allNodes.length > 0) render();
+    };
+    mapBgImage.onerror = () => {
+        console.error('地图背景图加载失败，请确认 frontend/map.png 存在');
+    };
+}
+
+// 路径动画状态
+let pathAnim = {
+    active: false,
+    progress: 0, // 0.0 to currentPath.length - 1
+    speed: 15.0   // 动画速度 (points per second)
+};
+
 function render() {
-    // 清空背景
-    ctx.fillStyle = '#e5e7eb';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 渲染背景
+    if (mapBgImage.complete && mapBgImage.naturalWidth > 0) {
+        // 绘制图片背景
+        // 假设图片坐标系与节点坐标系一致 (0,0) -> (width, height)
+        const topLeft = toScreen(0, 0);
+        const bottomRight = toScreen(mapBgImage.width, mapBgImage.height);
+        
+        // 注意：drawImage 参数是 x, y, width, height
+        // 使用 transform.scale 进行缩放
+        ctx.drawImage(
+            mapBgImage, 
+            transform.offsetX, 
+            transform.offsetY, 
+            mapBgImage.width * transform.scale, 
+            mapBgImage.height * transform.scale
+        );
+    } else {
+        // 降级使用纯色背景
+        ctx.fillStyle = '#e5e7eb';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
     
-    // 1. 绘制边 (路径)
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#9ca3af'; 
+    // 1. 绘制所有边 (改为灰色的一层，或者为了美观，只在有地图时不绘制普通边？)
+    // 根据需求：保留标签为spot的点，要有生成路径的动画。
+    // 通常有了地图底图后，就不太需要绘制底层的路网线了，除非是调试模式。
+    // 但为了让用户知道哪里可走，可以画淡一点。
+    
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(150, 150, 150, 0.3)'; // 非常淡的灰色
+    ctx.beginPath();
     allEdges.forEach(edge => {
+        // 如果正在动画导航，且该边不在路径上，则绘制淡色底线
         const u = nodeMap[edge.u];
         const v = nodeMap[edge.v];
         if(!u || !v) return;
         
+        // 简单的优化：只当边在屏幕内时绘制（此处略）
         const posU = toScreen(u.x, u.y);
         const posV = toScreen(v.x, v.y);
-        const isPath = isEdgeInPath(edge.u, edge.v);
         
-        ctx.beginPath();
         ctx.moveTo(posU.x, posU.y);
         ctx.lineTo(posV.x, posV.y);
-        
-        // 如果是导航路径的一部分，高亮绘制
-        if (isPath) {
-            ctx.save();
-            ctx.strokeStyle = COLOR_PATH;
-            ctx.lineWidth = 4;
-            ctx.stroke();
-            ctx.restore();
-        } else {
-            ctx.stroke();
-        }
     });
+    ctx.stroke();
     
-    // 2. 绘制节点 (圆点)
+    // 2. 绘制高亮路径 (带动画)
+    if (currentPath.length > 1) {
+        drawAnimatedPath();
+    }
+    
+    // 3. 绘制节点 (过滤：只绘制 category === 'spot' 或者是起终点)
     allNodes.forEach(node => {
+        // 过滤逻辑：如果是起点、终点、或者类型是 spot 则显示
+        // 如果正在导航，路径上的关键点也可以显示
+        const isImportant = node.category === 'spot' || node.id === startNodeId || node.id === endNodeId;
+        
+        if (!isImportant) return; 
+
         const pos = toScreen(node.x, node.y);
+        
+        // 绘制圆点
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, NODE_RADIUS, 0, Math.PI * 2);
+        // 景点画大一点
+        const radius = (node.id === startNodeId || node.id === endNodeId) ? NODE_RADIUS * 1.5 : NODE_RADIUS;
+        ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
         
         // 颜色状态判定
         let color = COLOR_DEFAULT;
         if (node.id === startNodeId) color = COLOR_START;
         else if (node.id === endNodeId) color = COLOR_END;
-        else if (currentPath.includes(node.id)) color = COLOR_PATH;
+        else if (currentPath.includes(node.id)) color = COLOR_PATH; // 路径上的点变色
         
         ctx.fillStyle = color;
         ctx.fill();
         
-        // 绘制文字标签
-        ctx.fillStyle = '#374151';
+        // 边框
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // 绘制文字标签 (给文字加个背景，防止看不清)
         ctx.font = '12px Arial';
+        const textWidth = ctx.measureText(node.name).width;
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.fillRect(pos.x + 8, pos.y - 8, textWidth + 4, 16);
+        
+        ctx.fillStyle = '#374151';
         ctx.fillText(node.name, pos.x + 10, pos.y + 4);
     });
+}
+
+function drawAnimatedPath() {
+    if (currentPath.length < 2) return;
+
+    ctx.save();
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = COLOR_PATH;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    // 我们根据 pathAnim.progress 来决定绘制多少
+    // progress 是一个浮点数，比如 2.5 表示绘制了 节点0->1->2，并且 2->3 绘制了一半
+    
+    const maxIndex = Math.floor(pathAnim.progress);
+    const t = pathAnim.progress - maxIndex; // 当前段的插值比例 (0~1)
+    
+    ctx.beginPath();
+    
+    // 绘制完整的前几段
+    const startNode = nodeMap[currentPath[0]];
+    let startPos = toScreen(startNode.x, startNode.y);
+    ctx.moveTo(startPos.x, startPos.y);
+    
+    for (let i = 0; i < maxIndex; i++) {
+        // 确保数组不越界
+        if (i + 1 >= currentPath.length) break;
+        const nextNode = nodeMap[currentPath[i+1]];
+        const nextPos = toScreen(nextNode.x, nextNode.y);
+        ctx.lineTo(nextPos.x, nextPos.y);
+    }
+    
+    // 绘制当前正在延伸的这一段
+    if (maxIndex < currentPath.length - 1) {
+        const u = nodeMap[currentPath[maxIndex]];
+        const v = nodeMap[currentPath[maxIndex+1]];
+        const posU = toScreen(u.x, u.y);
+        const posV = toScreen(v.x, v.y);
+        
+        const currentX = posU.x + (posV.x - posU.x) * t;
+        const currentY = posU.y + (posV.y - posU.y) * t;
+        
+        ctx.lineTo(currentX, currentY);
+        
+        // 在头部画一个小箭头或圆点表示“车头”
+        // ... (可选)
+    }
+    
+    ctx.stroke();
+    ctx.restore();
 }
 
 
@@ -941,13 +1067,13 @@ btnReset.addEventListener('click', () => {
     currentPath = [];
     currentSpotId = null;
     
+    // 停止动画
+    pathAnim.active = false;
+    pathAnim.progress = 0;
+
     // 重置 UI
-    elStart.innerText = '请在地图上点击';
-    elStart.classList.add('placeholder');
-    elStart.classList.remove('selected');
-    elEnd.innerText = '请在地图上点击';
-    elEnd.classList.add('placeholder');
-    elEnd.classList.remove('selected');
+    elStartInput.value = '';
+    elEndInput.value = '';
     
     btnNav.disabled = true;
     elResult.classList.add('hidden');
@@ -997,7 +1123,11 @@ btnNav.addEventListener('click', async () => {
         });
         elResult.classList.remove('hidden');
         
-        render(); // 在地图上高亮路径
+        // --- 启动路径动画 ---
+        pathAnim.active = true;
+        pathAnim.progress = 0;
+        lastAnimTime = performance.now();
+        requestAnimationFrame(animLoop);
         
     } catch (err) {
         alert(err.message);
@@ -1007,10 +1137,135 @@ btnNav.addEventListener('click', async () => {
     }
 });
 
+// 动画循环
+let lastAnimTime = 0;
+function animLoop(timestamp) {
+    if (!pathAnim.active) return;
+    
+    // 计算上一帧的时间差 (seconds)
+    const dt = (timestamp - lastAnimTime) / 1000;
+    lastAnimTime = timestamp;
+    
+    // 更新进度
+    // pathAnim.speed 是每秒走的“节点数” (edges)
+    // 可以做得更加真实：基于边的实际距离/速度，但这里简化为匀速通过节点
+    pathAnim.progress += pathAnim.speed * dt;
+    
+    if (pathAnim.progress >= currentPath.length - 1) {
+        pathAnim.progress = currentPath.length - 1;
+        pathAnim.active = false; // 结束动画
+        render(); // 绘制最终状态
+        return;
+    }
+    
+    render();
+    requestAnimationFrame(animLoop);
+}
+
 // 窗口大小变化自适应
 window.addEventListener('resize', () => {
     fitMapToScreen();
     render();
+});
+
+/**
+ * ==================================================================================
+ * 模块 11：搜索框自动补全逻辑
+ * ==================================================================================
+ */
+
+function setupAutoComplete(inputEl, listEl, isStart) {
+    // 监听输入
+    inputEl.addEventListener('input', () => {
+        const val = inputEl.value.trim().toLowerCase();
+        listEl.innerHTML = '';
+        
+        if (!val) {
+            listEl.classList.add('hidden');
+            // 如果清空了输入框，也要清除对应的选中状态
+            if (isStart) startNodeId = null;
+            else endNodeId = null;
+            render();
+            return;
+        }
+
+        // 过滤节点
+        const matches = allNodes.filter(n => n.name.toLowerCase().includes(val));
+        
+        if (matches.length > 0) {
+            matches.slice(0, 10).forEach(node => { // 最多显示10个建议
+                const li = document.createElement('li');
+                li.innerText = node.name;
+                li.addEventListener('click', () => {
+                    inputEl.value = node.name;
+                    listEl.classList.add('hidden');
+                    
+                    if (isStart) startNodeId = node.id;
+                    else endNodeId = node.id;
+                    
+                    // 如果两个都选好了，激活导航按钮
+                    if (startNodeId !== null && endNodeId !== null && startNodeId !== endNodeId) {
+                        btnNav.disabled = false;
+                    }
+                    
+                    render(); // 更新地图高亮
+                });
+                listEl.appendChild(li);
+            });
+            listEl.classList.remove('hidden');
+        } else {
+            listEl.classList.add('hidden');
+        }
+    });
+
+    // 点击外部隐藏建议列表
+    document.addEventListener('click', (e) => {
+        if (!inputEl.contains(e.target) && !listEl.contains(e.target)) {
+            listEl.classList.add('hidden');
+        }
+    });
+    
+    // 聚焦时如果内容不为空，也触发一次搜索
+    inputEl.addEventListener('focus', () => {
+         if(inputEl.value.trim()) {
+             inputEl.dispatchEvent(new Event('input'));
+         }
+    });
+}
+
+// 初始化搜索框
+setupAutoComplete(elStartInput, elStartList, true);
+setupAutoComplete(elEndInput, elEndList, false);
+
+/**
+ * ==================================================================================
+ * 模块 12：侧边栏折叠逻辑 (Hamburger Menu)
+ * ==================================================================================
+ */
+const btnSidebarToggle = document.getElementById('sidebar-toggle');
+const elSidebar = document.querySelector('.sidebar');
+let isSidebarOpen = true;
+
+btnSidebarToggle.addEventListener('click', () => {
+    isSidebarOpen = !isSidebarOpen;
+    
+    if (isSidebarOpen) {
+        elSidebar.classList.remove('collapsed');
+        // 恢复默认宽度，如果之前被JS修改过，这里靠CSS类的 !important 移除与否来控制
+        // 但由于我们移除了 toggle 时的 JS width 设置，纯 CSS 控制最稳
+        elSidebar.style.width = ''; 
+    } else {
+        elSidebar.classList.add('collapsed');
+    }
+    
+    // 等待动画结束后重绘地图 (300ms transition)
+    setTimeout(() => {
+        fitMapToScreen();
+        render();
+    }, 320); 
+    // 动画过程中也尝试更新几次以平滑过渡
+    setTimeout(() => { fitMapToScreen(); render(); }, 100);
+    setTimeout(() => { fitMapToScreen(); render(); }, 200);
 });
 
 // 启动程序
