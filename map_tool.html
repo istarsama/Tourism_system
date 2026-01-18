@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>地图路网构建器 v3.0 (最终版)</title>
+    <style>
+        body { display: flex; gap: 20px; padding: 20px; font-family: sans-serif; height: 100vh; overflow: hidden; }
+        #left-panel { flex: 1; position: relative; border: 2px solid #333; overflow: auto; cursor: crosshair; }
+        #map-image { display: block; user-select: none; pointer-events: none; } /* 图片不拦截点击 */
+        
+        .dot { 
+            position: absolute; width: 10px; height: 10px; 
+            background: #007bff; border: 2px solid white; border-radius: 50%; 
+            transform: translate(-7px, -7px); cursor: pointer;
+            z-index: 10; box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        }
+        .dot:hover { transform: translate(-7px, -7px) scale(1.2); z-index: 11; }
+        .dot.selected { background: #ff0000; box-shadow: 0 0 0 4px rgba(255, 0, 0, 0.3); z-index: 12; }
+        .dot.spot { background: #28a745; } /* 景点是绿色的 */
+        
+        svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+        line { stroke: #ff0000; stroke-width: 3; stroke-opacity: 0.6; }
+        
+        #sidebar { width: 320px; display: flex; flex-direction: column; gap: 15px; padding-right: 10px; }
+        .control-group { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 12px; color: #666; }
+        input[type="text"] { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        textarea { width: 100%; flex: 1; font-family: monospace; font-size: 11px; }
+        button { padding: 10px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #0056b3; }
+        button.danger { background: #dc3545; }
+        
+        .status-bar { padding: 5px 10px; background: #e9ecef; border-radius: 4px; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div id="left-panel">
+        <svg id="lines"></svg>
+        <div id="dots-layer"></div>
+        <img id="map-image" src="map1.jpg"> 
+    </div>
+    
+    <div id="sidebar">
+        <h3>📍 路网构建器 v3.0</h3>
+        
+        <div class="control-group">
+            <label>当前选中节点 ID: <span id="current-id">-</span></label>
+            <label>名称 (在这里修改不会丢失):</label>
+            <input type="text" id="node-name" placeholder="选中点后在此改名..." disabled>
+            
+            <div style="margin-top:10px; display:flex; gap:5px;">
+                <button onclick="toggleSpot()" style="flex:1; background:#28a745">设为景点 (S)</button>
+                <button onclick="deleteNode()" class="danger" style="width:40px" title="删除">🗑️</button>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <strong>操作口诀：</strong><br>
+            1. 🖱️ <b>点空白</b> = 新建并连接<br>
+            2. 🔗 <b>点蓝点</b> = 连接已有两点<br>
+            3. 📝 <b>改名</b> = 在上方输入框修改<br>
+            4. ⌨️ <b>Ctrl+Z</b> = 撤销<br>
+        </div>
+
+        <textarea id="output" readonly placeholder="JSON 会自动生成在这里..."></textarea>
+        <button onclick="copyJSON()">复制 JSON</button>
+    </div>
+
+    <script>
+        // 数据存储
+        let state = {
+            spots: [],
+            edges: [],
+            nextId: 1,
+            selectedId: null
+        };
+
+        // 历史记录 (用于撤销)
+        let historyStack = [];
+
+        const ui = {
+            panel: document.getElementById('left-panel'),
+            dotsLayer: document.getElementById('dots-layer'),
+            svg: document.getElementById('lines'),
+            nameInput: document.getElementById('node-name'),
+            idLabel: document.getElementById('current-id'),
+            output: document.getElementById('output')
+        };
+
+        // ================= 核心逻辑 =================
+
+        // 1. 点击面板 (空白处) -> 新建点
+        ui.panel.addEventListener('click', (e) => {
+            if (e.target !== ui.panel && e.target.id !== 'map-image') return; // 忽略点击点
+            saveHistory();
+            
+            const rect = ui.panel.getBoundingClientRect();
+            // 计算相对于图片的坐标（考虑滚动）
+            const x = Math.round(e.clientX - rect.left + ui.panel.scrollLeft);
+            const y = Math.round(e.clientY - rect.top + ui.panel.scrollTop);
+
+            createNode(x, y);
+        });
+
+        // 2. 创建节点
+        function createNode(x, y) {
+            const id = state.nextId++;
+            const newNode = {
+                id: id,
+                name: `路点_${id}`,
+                x: x, 
+                y: y,
+                type: 'road'
+            };
+            state.spots.push(newNode);
+
+            // 如果有选中点，自动连接
+            if (state.selectedId !== null) {
+                createEdge(state.selectedId, id);
+            }
+
+            render();
+            selectNode(id);
+        }
+
+        // 3. 点击已有节点 (选中 或 连接)
+        function onDotClick(e, id) {
+            e.stopPropagation(); // 阻止冒泡到面板
+            
+            // 如果点击的是当前选中的点 -> 取消选中
+            if (state.selectedId === id) {
+                selectNode(null);
+                return;
+            }
+
+            // 如果已经选中了一个点 A，现在点击了点 B -> 建立连接 (闭环)
+            if (state.selectedId !== null) {
+                saveHistory();
+                // 检查是否已经连过了
+                const exists = state.edges.some(edge => 
+                    (edge.u === state.selectedId && edge.v === id) || 
+                    (edge.u === id && edge.v === state.selectedId)
+                );
+                
+                if (!exists) {
+                    createEdge(state.selectedId, id);
+                    render();
+                }
+                // 连完后，焦点转移到新点的点上，方便继续走
+                selectNode(id); 
+            } else {
+                // 如果没选中点 -> 选中它
+                selectNode(id);
+            }
+        }
+
+        // 4. 创建边
+        function createEdge(uId, vId) {
+            const u = state.spots.find(s => s.id === uId);
+            const v = state.spots.find(s => s.id === vId);
+            if (!u || !v) return;
+
+            const dist = Math.round(Math.sqrt(Math.pow(u.x - v.x, 2) + Math.pow(u.y - v.y, 2)));
+            state.edges.push({
+                u: uId,
+                v: vId,
+                distance: dist,
+                crowding: 1.0
+            });
+        }
+
+        // 5. 选中逻辑 & 改名绑定
+        function selectNode(id) {
+            state.selectedId = id;
+            renderVisualSelection();
+
+            if (id === null) {
+                ui.nameInput.value = '';
+                ui.nameInput.disabled = true;
+                ui.idLabel.textContent = '-';
+            } else {
+                const node = state.spots.find(s => s.id === id);
+                ui.nameInput.value = node.name;
+                ui.nameInput.disabled = false;
+                ui.idLabel.textContent = id;
+                ui.nameInput.focus(); // 自动聚焦输入框
+            }
+        }
+
+        // 监听输入框修改，实时同步到数据
+        ui.nameInput.addEventListener('input', (e) => {
+            if (state.selectedId === null) return;
+            const node = state.spots.find(s => s.id === state.selectedId);
+            if (node) {
+                node.name = e.target.value;
+                exportJSON(); // 实时更新 JSON
+            }
+        });
+
+        // ================= 渲染逻辑 =================
+        function render() {
+            // 1. 清空画布
+            ui.dotsLayer.innerHTML = '';
+            ui.svg.innerHTML = '';
+
+            // 2. 画线 (Edge)
+            state.edges.forEach(edge => {
+                const u = state.spots.find(s => s.id === edge.u);
+                const v = state.spots.find(s => s.id === edge.v);
+                if (u && v) drawLine(u, v);
+            });
+
+            // 3. 画点 (Node)
+            state.spots.forEach(spot => {
+                const dot = document.createElement('div');
+                dot.className = `dot ${spot.type === 'spot' ? 'spot' : ''}`;
+                dot.style.left = `${spot.x}px`;
+                dot.style.top = `${spot.y}px`;
+                dot.onclick = (e) => onDotClick(e, spot.id);
+                ui.dotsLayer.appendChild(dot);
+            });
+
+            renderVisualSelection();
+            exportJSON();
+        }
+
+        function drawLine(u, v) {
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", u.x);
+            line.setAttribute("y1", u.y);
+            line.setAttribute("x2", v.x);
+            line.setAttribute("y2", v.y);
+            ui.svg.appendChild(line);
+        }
+
+        function renderVisualSelection() {
+            // 移除旧选中
+            document.querySelectorAll('.dot.selected').forEach(el => el.classList.remove('selected'));
+            // 添加新选中
+            if (state.selectedId !== null) {
+                // 这里的索引可能不准，依赖 DOM 顺序重绘有点浪费，简单处理：
+                // 重新查找所有点对应的 DOM (由于render重绘了，这里稍微简陋点但有效)
+                const index = state.spots.findIndex(s => s.id === state.selectedId);
+                if (index >= 0 && ui.dotsLayer.children[index]) {
+                    ui.dotsLayer.children[index].classList.add('selected');
+                }
+            }
+        }
+
+        // ================= 工具函数 =================
+        function toggleSpot() {
+            if (state.selectedId === null) return;
+            saveHistory();
+            const node = state.spots.find(s => s.id === state.selectedId);
+            node.type = node.type === 'road' ? 'spot' : 'road';
+            render();
+            // 保持选中状态
+            selectNode(node.id);
+        }
+
+        function deleteNode() {
+            if (state.selectedId === null) return;
+            saveHistory();
+            const id = state.selectedId;
+            // 删点
+            state.spots = state.spots.filter(s => s.id !== id);
+            // 删边
+            state.edges = state.edges.filter(e => e.u !== id && e.v !== id);
+            
+            selectNode(null);
+            render();
+        }
+
+        function exportJSON() {
+            ui.output.value = JSON.stringify({ spots: state.spots, edges: state.edges }, null, 2);
+        }
+
+        function copyJSON() {
+            ui.output.select();
+            document.execCommand('copy');
+            alert('JSON 已复制！快去覆盖 campus_map.json');
+        }
+
+        // 撤销功能
+        function saveHistory() {
+            // 深拷贝当前状态
+            historyStack.push(JSON.parse(JSON.stringify(state)));
+            if (historyStack.length > 20) historyStack.shift(); // 限制步数
+        }
+
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+Z 撤销
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                if (historyStack.length > 0) {
+                    state = historyStack.pop();
+                    render();
+                    selectNode(state.selectedId);
+                }
+            }
+            // S 键设为景点 (当没有在输入框打字时)
+            if (e.key.toLowerCase() === 's' && document.activeElement !== ui.nameInput) {
+                toggleSpot();
+            }
+            // Delete 键删除
+            if (e.key === 'Delete' && document.activeElement !== ui.nameInput) {
+                deleteNode();
+            }
+        });
+
+        // 初始化
+        render();
+    </script>
+</body>
+</html>

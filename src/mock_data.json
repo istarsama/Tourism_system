@@ -1,0 +1,1113 @@
+{
+  "users": ["student_A", "foodie_B", "coder_C"],
+  "diaries": [
+    {
+      "spot_id": 44,
+      "username": "foodie_B",
+      "title": "学生食堂的番茄炒蛋永远的神！",
+      "content": "每天不知道吃什么的时候就会点番茄炒蛋，酸甜适中，蛋花嫩滑，配上米饭绝了！就是有时候师傅手抖盐放多了。",
+      "score": 4.2,
+      "view_count": 156,
+      "comments": [
+        {"username": "student_A", "content": "同感！我每次必点，就是排队人太多了", "score": 4.0},
+        {"username": "coder_C", "content": "不如风味餐厅的版本，那个更有锅气", "score": 3.5}
+      ]
+    },
+    {
+      "spot_id": 57,
+      "username": "coder_C",
+      "title": "图书馆五楼的安静学习区",
+      "content": "找到了宝藏位置！五楼靠窗的座位，采光好又安静，插座充足，适合长时间码代码。就是得早来抢座，晚了就没了。",
+      "score": 4.8,
+      "view_count": 203,
+      "comments": [
+        {"username": "student_A", "content": "求具体位置！每次去都找不到好座位", "score": 4.5}
+      ]
+    },
+    {
+      "spot_id": 42,
+      "username": "student_A",
+      "title": "学生餐厅的糖醋里脊又甜又腻",
+      "content": "今天的糖醋里脊完全不行，酱汁甜得发齁，肉块又硬又柴，吃了两口就放弃了。希望食堂能改进一下配方。",
+      "score": 2.0,
+      "view_count": 89,
+      "comments": [
+        {"username": "foodie_B", "content": "我上周吃也觉得不行，还是教工食堂的好吃", "score": 2.5}
+      ]
+    },
+    {
+      "spot_id": 30,
+      "username": "coder_C",
+      "title": "教学实验楼找不到教室！",
+      "content": "第一次来这栋楼上课，标识牌太少了，绕了三圈才找到304教室。走廊设计得像迷宫，建议学校改进一下导视系统。",
+      "score": 2.3,
+      "view_count": 134,
+      "comments": [
+        {"username": "student_A", "content": "+1，我上周也迷路了，差点迟到", "score": 2.0},
+        {"username": "foodie_B", "content": "建议下载校园地图APP，上面有室内导航", "score": 3.0}
+      ]
+    },
+    {
+      "spot_id": 46,
+      "username": "student_A",
+      "title": "夜跑遇到超美的晚霞",
+      "content": "晚上七点在运动场跑步，天空是粉紫色的，云层被染成了金色。跑着步看着这样的景色，所有的压力都释放了。",
+      "score": 4.9,
+      "view_count": 178,
+      "comments": [
+        {"username": "foodie_B", "content": "拍到了吗？求分享照片！", "score": 4.8},
+        {"username": "coder_C", "content": "昨天我也看到了，确实很美", "score": 4.5}
+      ]
+    },
+    {
+      "spot_id": 54,
+      "username": "foodie_B",
+      "title": "北邮星塔的夜景太棒了",
+      "content": "晚上和朋友爬上星塔，可以看到整个校园的灯火，远处的城市天际线也很清晰。风有点大，但景色值得。",
+      "score": 4.6,
+      "view_count": 192,
+      "comments": [
+        {"username": "coder_C", "content": "几点关门？晚上想去看看", "score": 4.0}
+      ]
+    },
+    {
+      "spot_id": 24,
+      "username": "student_A",
+      "title": "天猫超市的关东煮冬天必备",
+      "content": "晚上从图书馆出来，买一杯关东煮，热乎乎的汤配上萝卜、鱼丸，瞬间暖起来了。就是有点小贵，不能经常吃。",
+      "score": 4.0,
+      "view_count": 145,
+      "comments": [
+        {"username": "foodie_B", "content": "确实贵，但偶尔犒劳自己一下还行", "score": 3.8}
+      ]
+    },
+    {
+      "spot_id": 53,
+      "username": "coder_C",
+      "title": "医务室开药好便宜",
+      "content": "感冒去医务室，医生很耐心，开了三天的药才花了八块钱。比校外药店便宜多了，就是排队时间有点长。",
+      "score": 4.2,
+      "view_count": 112,
+      "comments": []
+    },
+    {
+      "spot_id": 73,
+      "username": "student_A",
+      "title": "智慧教室的椅子太舒服了",
+      "content": "今天在智慧教学楼上课，椅子居然是人体工学设计，坐三小时都不累。屏幕清晰，音响效果好，学习体验满分。",
+      "score": 4.7,
+      "view_count": 167,
+      "comments": [
+        {"username": "coder_C", "content": "确实，比普通教室强多了", "score": 4.5}
+      ]
+    },
+    {
+      "spot_id": 18,
+      "username": "foodie_B",
+      "title": "风味餐厅的川菜窗口",
+      "content": "新开的川菜窗口，水煮肉片麻辣鲜香，肉片嫩滑，配菜丰富。就是太辣了，不能吃辣的同学慎点。",
+      "score": 4.3,
+      "view_count": 189,
+      "comments": [
+        {"username": "coder_C", "content": "我湖南人觉得辣度刚好，很正宗", "score": 4.7},
+        {"username": "student_A", "content": "太辣了，吃了两口就受不了", "score": 2.5}
+      ]
+    },
+    {
+      "spot_id": 67,
+      "username": "coder_C",
+      "title": "网安学院的实验室设备",
+      "content": "参观了一下网安学院的实验室，设备真的很先进，有独立的服务器集群和网络安全实验平台。羡慕在这里上课的同学。",
+      "score": 4.6,
+      "view_count": 123,
+      "comments": []
+    },
+    {
+      "spot_id": 22,
+      "username": "student_A",
+      "title": "学生活动中心的街舞社表演",
+      "content": "晚上路过活动中心，看到街舞社在排练，动作整齐有力，音乐节奏感强。站在外面看了十分钟，被他们的热情感染了。",
+      "score": 4.5,
+      "view_count": 156,
+      "comments": [
+        {"username": "foodie_B", "content": "他们每周三晚上都有公开排练，可以去看", "score": 4.3}
+      ]
+    },
+    {
+      "spot_id": 19,
+      "username": "foodie_B",
+      "title": "教工食堂的早餐比学生食堂好",
+      "content": "起早去教工食堂吃早餐，品种更丰富，有现包的馄饨、小笼包，豆浆也是现磨的。就是价格稍贵一点，但值得。",
+      "score": 4.4,
+      "view_count": 167,
+      "comments": [
+        {"username": "student_A", "content": "学生能去吃吗？需要什么证件？", "score": 4.0}
+      ]
+    },
+    {
+      "spot_id": 98,
+      "username": "coder_C",
+      "title": "甲子钟下的历史感",
+      "content": "站在甲子钟下，看着上面刻的年份，能感受到学校的历史沉淀。很多毕业生在这里拍照留念，是个有纪念意义的地方。",
+      "score": 4.2,
+      "view_count": 98,
+      "comments": []
+    },
+    {
+      "spot_id": 61,
+      "username": "student_A",
+      "title": "数媒学院的艺术氛围",
+      "content": "数媒学院的大厅经常展示学生作品，有动画短片、平面设计、3D模型等。每次路过都会停下来看看，同学们的创意真好。",
+      "score": 4.5,
+      "view_count": 134,
+      "comments": []
+    },
+    {
+      "spot_id": 26,
+      "username": "coder_C",
+      "title": "公共教学楼的插座不够用",
+      "content": "下午在公共教学楼自习，找了三个教室才找到有插座的座位。现在大家都要用电脑，插座需求这么大，学校能不能多装一些？",
+      "score": 2.8,
+      "view_count": 145,
+      "comments": [
+        {"username": "student_A", "content": "同感！我每次都带充电宝", "score": 2.5},
+        {"username": "foodie_B", "content": "建议去图书馆，插座多很多", "score": 4.0}
+      ]
+    },
+    {
+      "spot_id": 94,
+      "username": "foodie_B",
+      "title": "地下超市的进口零食",
+      "content": "发现地下超市有卖一些进口零食，日本的薯片、韩国的饮料，价格比外面便利店便宜。偶尔买来尝尝鲜还不错。",
+      "score": 4.0,
+      "view_count": 112,
+      "comments": []
+    },
+    {
+      "spot_id": 10,
+      "username": "student_A",
+      "title": "燕北园的安静角落",
+      "content": "燕北园里有个小亭子，周围种满了竹子，很安静。适合一个人发呆、看书，或者和好朋友聊心事。",
+      "score": 4.3,
+      "view_count": 89,
+      "comments": [
+        {"username": "coder_C", "content": "具体在哪？想去看看", "score": 4.2}
+      ]
+    },
+    {
+      "spot_id": 63,
+      "username": "coder_C",
+      "title": "智能学院门口的机器人",
+      "content": "智能学院门口放了个机器人，可以简单对话，还会跳舞。每次路过都有小朋友围着看，挺有意思的。",
+      "score": 4.1,
+      "view_count": 156,
+      "comments": []
+    },
+    {
+      "spot_id": 21,
+      "username": "student_A",
+      "title": "综合办公楼办事效率",
+      "content": "去综合办公楼办学生证补办，流程清晰，工作人员态度挺好，半小时就搞定了。比想象中顺利很多。",
+      "score": 4.2,
+      "view_count": 78,
+      "comments": []
+    },
+    {
+      "spot_id": 44,
+      "username": "foodie_B",
+      "title": "学生食堂的免费汤真是汤",
+      "content": "今天的免费汤名副其实，清澈见底，几片菜叶飘着，味道跟白开水差不多。虽然免费，但这也太敷衍了吧。",
+      "score": 1.5,
+      "view_count": 167,
+      "comments": [
+        {"username": "student_A", "content": "哈哈，形容得太准确了", "score": 1.8},
+        {"username": "coder_C", "content": "有次我捞到一块冬瓜，感动了半天", "score": 2.0}
+      ]
+    },
+    {
+      "spot_id": 57,
+      "username": "coder_C",
+      "title": "图书馆的研讨室太难约了",
+      "content": "想和小组同学用研讨室，提前三天预约都约不到。系统一开放就被抢光，能不能多设几个研讨室啊？",
+      "score": 2.5,
+      "view_count": 189,
+      "comments": [
+        {"username": "student_A", "content": "确实，我们最后找了空教室", "score": 2.3}
+      ]
+    },
+    {
+      "spot_id": 42,
+      "username": "student_A",
+      "title": "学生餐厅的烧茄子不错",
+      "content": "今天的烧茄子软糯入味，酱汁浓郁，配米饭能吃两大碗。就是油有点大，不过食堂菜都这样。",
+      "score": 4.0,
+      "view_count": 134,
+      "comments": []
+    },
+    {
+      "spot_id": 46,
+      "username": "foodie_B",
+      "title": "运动场夜跑注意事项",
+      "content": "晚上运动场人很多，跑步的、散步的、训练的。建议大家逆时针跑，注意避让，戴好反光装备。安全第一。",
+      "score": 4.3,
+      "view_count": 145,
+      "comments": [
+        {"username": "coder_C", "content": "还有人带宠物散步，得小心点", "score": 3.8}
+      ]
+    },
+    {
+      "spot_id": 30,
+      "username": "coder_C",
+      "title": "教学实验楼的电梯",
+      "content": "这栋楼的电梯老旧，运行缓慢，高峰期要等很久。我爬了六层楼，就当锻炼身体了。",
+      "score": 2.8,
+      "view_count": 112,
+      "comments": []
+    },
+    {
+      "spot_id": 24,
+      "username": "student_A",
+      "title": "天猫超市的酸奶经常打折",
+      "content": "发现晚上八点后天猫超市的酸奶会打折，买一送一或者七折。适合囤货，宿舍有冰箱的同学可以关注一下。",
+      "score": 4.2,
+      "view_count": 156,
+      "comments": []
+    },
+    {
+      "spot_id": 54,
+      "username": "foodie_B",
+      "title": "北邮星塔看日出",
+      "content": "凌晨五点爬起来去星塔看日出，看着天空从深蓝渐变成橙红，太阳慢慢升起，整个校园还在沉睡中。值得早起的体验。",
+      "score": 4.8,
+      "view_count": 203,
+      "comments": [
+        {"username": "student_A", "content": "好浪漫，下次也想试试", "score": 4.7}
+      ]
+    },
+    {
+      "spot_id": 18,
+      "username": "coder_C",
+      "title": "风味餐厅的牛肉面肉太少",
+      "content": "18块的牛肉面，数了数只有四片薄薄的牛肉，面倒是很多。汤头还可以，但性价比太低，不会再点了。",
+      "score": 2.5,
+      "view_count": 134,
+      "comments": [
+        {"username": "foodie_B", "content": "同感，不如去校外吃", "score": 2.3}
+      ]
+    },
+    {
+      "spot_id": 73,
+      "username": "student_A",
+      "title": "智慧教室的空调太冷了",
+      "content": "智慧教室的空调开得太猛，坐在风口下差点冻感冒。建议带件外套，或者选择不直接对着空调的位置。",
+      "score": 3.0,
+      "view_count": 112,
+      "comments": []
+    },
+    {
+      "spot_id": 53,
+      "username": "foodie_B",
+      "title": "医务室只能看小病",
+      "content": "肚子疼去医务室，医生说是肠胃炎，开了点药就让回去了。如果症状严重还是要去医院，这里设备有限。",
+      "score": 3.5,
+      "view_count": 98,
+      "comments": []
+    },
+    {
+      "spot_id": 22,
+      "username": "coder_C",
+      "title": "活动中心的钢琴随便弹",
+      "content": "发现学生活动中心一楼有架公共钢琴，只要没人用就可以弹。虽然音有点不准，但能自由弹奏的感觉真好。",
+      "score": 4.4,
+      "view_count": 178,
+      "comments": [
+        {"username": "student_A", "content": "真的吗？我学钢琴的，想去试试", "score": 4.5}
+      ]
+    },
+    {
+      "spot_id": 67,
+      "username": "student_A",
+      "title": "网安学院的讲座质量高",
+      "content": "听了网安学院组织的网络安全讲座，讲师是行业大牛，内容前沿实用，还有实操演示。收获很大，希望多办这类活动。",
+      "score": 4.7,
+      "view_count": 145,
+      "comments": []
+    },
+    {
+      "spot_id": 19,
+      "username": "foodie_B",
+      "title": "教工食堂的油条豆浆套餐",
+      "content": "教工食堂的早餐，油条+豆浆套餐只要五块。油条炸得酥脆，豆浆浓郁，性价比超高。就是得早起，八点半后就没了。",
+      "score": 4.5,
+      "view_count": 189,
+      "comments": [
+        {"username": "coder_C", "content": "明天就去试试", "score": 4.3}
+      ]
+    },
+    {
+      "spot_id": 98,
+      "username": "student_A",
+      "title": "毕业生在甲子钟拍婚纱照",
+      "content": "看到一对毕业生穿着婚纱在甲子钟前拍照，好有纪念意义。希望几年后我也能带着重要的人回来这里拍照。",
+      "score": 4.6,
+      "view_count": 167,
+      "comments": []
+    },
+    {
+      "spot_id": 26,
+      "username": "coder_C",
+      "title": "公共教学楼的女厕所排队问题",
+      "content": "下课高峰期，女厕所排长队，男厕所就空很多。学校能不能重新设计一下卫生间比例？这问题存在好久了。",
+      "score": 2.3,
+      "view_count": 134,
+      "comments": [
+        {"username": "student_A", "content": "强烈同意！每次都要等好久", "score": 2.0}
+      ]
+    },
+    {
+      "spot_id": 44,
+      "username": "foodie_B",
+      "title": "学生食堂的宫保鸡丁发挥不稳定",
+      "content": "有时候好吃，有时候难吃，完全看厨师心情。今天的宫保鸡丁花生不脆，鸡肉老，酱汁太甜。失望。",
+      "score": 2.8,
+      "view_count": 156,
+      "comments": []
+    },
+    {
+      "spot_id": 57,
+      "username": "coder_C",
+      "title": "图书馆的闭馆音乐",
+      "content": "很喜欢图书馆的闭馆音乐，轻柔的钢琴曲，提醒大家该回去了。听到这个音乐就知道一天的学习结束了。",
+      "score": 4.5,
+      "view_count": 178,
+      "comments": [
+        {"username": "student_A", "content": "是《天空之城》吗？我也喜欢", "score": 4.6}
+      ]
+    },
+    {
+      "spot_id": 10,
+      "username": "student_A",
+      "title": "燕北园的小猫家族",
+      "content": "燕北园里有一窝小猫，猫妈妈带着三只小奶猫，毛茸茸的超可爱。同学们会带猫粮来喂，它们都不怎么怕人了。",
+      "score": 4.8,
+      "view_count": 203,
+      "comments": [
+        {"username": "foodie_B", "content": "具体位置在哪？想去看", "score": 4.7},
+        {"username": "coder_C", "content": "注意不要随便摸，有些猫怕生", "score": 4.0}
+      ]
+    },
+    {
+      "spot_id": 42,
+      "username": "foodie_B",
+      "title": "学生餐厅的晚餐选择少",
+      "content": "晚上六点半到学生餐厅，很多窗口都关了，剩下的菜也不多了。建议早点去，或者考虑其他食堂。",
+      "score": 3.0,
+      "view_count": 123,
+      "comments": []
+    },
+    {
+      "spot_id": 46,
+      "username": "coder_C",
+      "title": "运动场打球被占场",
+      "content": "和朋友约好打篮球，到运动场发现场地都被占了，有些是校队训练，有些是社团活动。公共资源应该更合理分配。",
+      "score": 2.8,
+      "view_count": 145,
+      "comments": []
+    },
+    {
+      "spot_id": 24,
+      "username": "student_A",
+      "title": "天猫超市的雨伞卖太贵",
+      "content": "突然下雨，去天猫超市买伞，最便宜的都要35块，质量还很一般。建议常备雨伞在书包里，别在这里买。",
+      "score": 2.0,
+      "view_count": 112,
+      "comments": [
+        {"username": "foodie_B", "content": "确实，不如网上买", "score": 1.8}
+      ]
+    },
+    {
+      "spot_id": 30,
+      "username": "foodie_B",
+      "title": "教学实验楼的自动贩卖机",
+      "content": "实验楼里的自动贩卖机饮料品种少，还经常缺货。想买瓶水都难，希望学校能定期补货，增加品种。",
+      "score": 2.5,
+      "view_count": 98,
+      "comments": []
+    },
+    {
+      "spot_id": 54,
+      "username": "coder_C",
+      "title": "北邮星塔风大时的体验",
+      "content": "今天风大，爬上星塔感觉要被吹走了。视野很好，但站不稳，拍的照片都糊了。建议选择无风或微风的日子去。",
+      "score": 3.5,
+      "view_count": 134,
+      "comments": []
+    },
+    {
+      "spot_id": 18,
+      "username": "student_A",
+      "title": "风味餐厅的饺子现包现煮",
+      "content": "风味餐厅的饺子窗口，可以看到师傅在现场包饺子，猪肉白菜馅的很好吃。就是煮得慢，要等十分钟左右。",
+      "score": 4.2,
+      "view_count": 167,
+      "comments": [
+        {"username": "foodie_B", "content": "韭菜鸡蛋的也好吃", "score": 4.3}
+      ]
+    },
+    {
+      "spot_id": 73,
+      "username": "coder_C",
+      "title": "智慧教室的网络不稳定",
+      "content": "智慧教室的WiFi时好时坏，上网课经常卡顿。有线网络接口又少，希望学校能升级一下网络设备。",
+      "score": 2.8,
+      "view_count": 145,
+      "comments": []
+    },
+    {
+      "spot_id": 22,
+      "username": "foodie_B",
+      "title": "活动中心的免费电影放映",
+      "content": "每周五晚上学生活动中心有免费电影放映，这周放的是《星际穿越》。画质音效不错，就是座位有点硬。",
+      "score": 4.0,
+      "view_count": 189,
+      "comments": [
+        {"username": "student_A", "content": "下周放什么？求片单", "score": 4.2}
+      ]
+    },
+    {
+      "spot_id": 19,
+      "username": "student_A",
+      "title": "教工食堂的午餐性价比",
+      "content": "教工食堂午餐两荤一素大概15-20元，比学生食堂贵，但分量更足，食材也更好。偶尔改善伙食可以来这里。",
+      "score": 4.0,
+      "view_count": 156,
+      "comments": []
+    },
+    {
+      "spot_id": 67,
+      "username": "foodie_B",
+      "title": "网安学院咖啡机的咖啡",
+      "content": "网安学院大厅有台自助咖啡机，美式8块，拿铁12块。味道一般，但比速溶咖啡强，赶时间可以买一杯。",
+      "score": 3.5,
+      "view_count": 112,
+      "comments": []
+    },
+    {
+      "spot_id": 53,
+      "username": "coder_C",
+      "title": "医务室周末只开半天",
+      "content": "周六上午去看病，发现医务室只开到中午12点。周末生病很不方便，希望能延长周末的服务时间。",
+      "score": 2.8,
+      "view_count": 98,
+      "comments": []
+    },
+    {
+      "spot_id": 44,
+      "username": "student_A",
+      "title": "学生食堂的免费WiFi",
+      "content": "学生食堂有免费WiFi，但信号很弱，经常连不上。想边吃饭边看视频都不行，最后还是用自己的流量。",
+      "score": 2.3,
+      "view_count": 134,
+      "comments": []
+    },
+    {
+      "spot_id": 57,
+      "username": "foodie_B",
+      "title": "图书馆不能带零食进去",
+      "content": "带了包饼干去图书馆，被管理员提醒不能带零食。理解是为了保持环境清洁，但学习饿了真的很需要补充能量啊。",
+      "score": 3.0,
+      "view_count": 167,
+      "comments": [
+        {"username": "coder_C", "content": "可以在休息区吃，但不能带进阅览室", "score": 3.2}
+      ]
+    },
+    {
+      "spot_id": 26,
+      "username": "coder_C",
+      "title": "公共教学楼的下课铃声",
+      "content": "教学楼的上下课铃声太大了，突然响起会吓一跳。建议调小音量，或者改成渐强的音乐铃声。",
+      "score": 2.5,
+      "view_count": 112,
+      "comments": []
+    },
+    {
+      "spot_id": 10,
+      "username": "foodie_B",
+      "title": "燕北园的蚊子太多了",
+      "content": "傍晚去燕北园散步，被蚊子咬了好几个包。绿化好是好事，但能不能定期灭蚊？穿长裤都没用。",
+      "score": 2.0,
+      "view_count": 98,
+      "comments": [
+        {"username": "student_A", "content": "带驱蚊液！亲测有效", "score": 3.0}
+      ]
+    },
+    {
+      "spot_id": 42,
+      "username": "coder_C",
+      "title": "学生餐厅的餐具清洁问题",
+      "content": "有时候拿到的餐盘上还有油渍，筷子也有没洗干净的地方。希望食堂加强餐具清洁，毕竟关系到健康。",
+      "score": 2.2,
+      "view_count": 156,
+      "comments": []
+    },
+    {
+      "spot_id": 46,
+      "username": "student_A",
+      "title": "运动场的照明时间",
+      "content": "运动场晚上九点半就关大灯了，但还有很多人在跑步。突然变暗很不安全，建议延长到十点或十点半。",
+      "score": 3.0,
+      "view_count": 134,
+      "comments": [
+        {"username": "foodie_B", "content": "支持！九点半太早了", "score": 2.8}
+      ]
+    },
+    {
+      "spot_id": 24,
+      "username": "coder_C",
+      "title": "天猫超市的快递代收服务",
+      "content": "天猫超市可以代收快递，方便不在宿舍时的收取。不过取件高峰期要排队，建议错峰取件。",
+      "score": 4.0,
+      "view_count": 145,
+      "comments": []
+    },
+    {
+      "spot_id": 54,
+      "username": "student_A",
+      "title": "北邮星塔下的许愿墙",
+      "content": "星塔下面有面许愿墙，贴满了同学们的愿望贴纸。看了看，有希望考研成功的，有希望脱单的，挺有意思的。",
+      "score": 4.3,
+      "view_count": 178,
+      "comments": []
+    },
+    {
+      "spot_id": 18,
+      "username": "foodie_B",
+      "title": "风味餐厅的蒸菜窗口",
+      "content": "新开的蒸菜窗口，少油少盐，比较健康。尝试了蒸鸡块和蒸豆腐，味道清淡但鲜美，适合想减肥的同学。",
+      "score": 4.2,
+      "view_count": 156,
+      "comments": [
+        {"username": "student_A", "content": "价格怎么样？贵吗？", "score": 4.0}
+      ]
+    },
+    {
+      "spot_id": 73,
+      "username": "coder_C",
+      "title": "智慧教室的设备使用培训",
+      "content": "第一次用智慧教室的设备，有点复杂。幸好有使用说明贴在墙上，按照步骤操作还算顺利。建议新生都看看说明。",
+      "score": 3.8,
+      "view_count": 123,
+      "comments": []
+    },
+    {
+      "spot_id": 22,
+      "username": "student_A",
+      "title": "活动中心的心理咨询室",
+      "content": "知道活动中心有心理咨询室，预约了一次。老师很专业，聊天后感觉轻松了很多。有压力的时候可以试试，免费的。",
+      "score": 4.5,
+      "view_count": 145,
+      "comments": [
+        {"username": "coder_C", "content": "怎么预约？需要什么条件？", "score": 4.3}
+      ]
+    },
+    {
+      "spot_id": 19,
+      "username": "foodie_B",
+      "title": "教工食堂的晚餐自助",
+      "content": "教工食堂晚上有自助餐，25元一位，菜品丰富，有凉菜、热菜、汤、水果。性价比高，就是去晚了选择会少。",
+      "score": 4.3,
+      "view_count": 189,
+      "comments": [
+        {"username": "student_A", "content": "学生也可以去吃吗？", "score": 4.2}
+      ]
+    },
+    {
+      "spot_id": 67,
+      "username": "coder_C",
+      "title": "网安学院的开放日",
+      "content": "网安学院今天开放日，展示了各种网络安全技术，还有互动体验。对网络安全感兴趣的同学可以去看看，增长见识。",
+      "score": 4.6,
+      "view_count": 167,
+      "comments": []
+    },
+    {
+      "spot_id": 53,
+      "username": "student_A",
+      "title": "医务室的候诊时间",
+      "content": "早上九点去医务室，前面排了十几个人，等了四十多分钟。建议错开高峰期，或者提前电话咨询等待时间。",
+      "score": 3.0,
+      "view_count": 112,
+      "comments": []
+    },
+    {
+      "spot_id": 44,
+      "username": "foodie_B",
+      "title": "学生食堂的麻辣烫辣度选择",
+      "content": "学生食堂的麻辣烫可以选择辣度，微辣、中辣、特辣。我选了中辣，辣得过瘾，但第二天肠胃有点受不了。",
+      "score": 3.8,
+      "view_count": 156,
+      "comments": [
+        {"username": "coder_C", "content": "我吃特辣都没感觉，可能我太能吃辣了", "score": 4.5}
+      ]
+    },
+    {
+      "spot_id": 57,
+      "username": "student_A",
+      "title": "图书馆的储物柜使用",
+      "content": "图书馆有付费储物柜，可以存放书本和贵重物品，一天三块钱。适合长期在图书馆学习的同学，不用每天背很重的书。",
+      "score": 4.0,
+      "view_count": 134,
+      "comments": []
+    },
+    {
+      "spot_id": 26,
+      "username": "foodie_B",
+      "title": "公共教学楼的热水供应",
+      "content": "公共教学楼每层都有热水机，免费提供热水。对于需要泡茶、泡咖啡的同学来说很方便，水温也很合适。",
+      "score": 4.5,
+      "view_count": 145,
+      "comments": [
+        {"username": "coder_C", "content": "有时候水垢有点多，建议定期清理", "score": 3.8}
+      ]
+    },
+    {
+      "spot_id": 10,
+      "username": "coder_C",
+      "title": "燕北园的春日花开",
+      "content": "春天燕北园里的花都开了，有桃花、樱花、海棠，五颜六色的很漂亮。很多人在拍照，是校园里的一处美景。",
+      "score": 4.7,
+      "view_count": 178,
+      "comments": []
+    },
+    {
+      "spot_id": 42,
+      "username": "student_A",
+      "title": "学生食堂的卫生评级",
+      "content": "注意到学生食堂墙上贴着卫生评级，是A级。看到这个稍微放心一点，但还是要自己注意餐具清洁。",
+      "score": 3.8,
+      "view_count": 112,
+      "comments": []
+    },
+    {
+      "spot_id": 46,
+      "username": "foodie_B",
+      "title": "运动场的跑道维护",
+      "content": "运动场的塑胶跑道有些地方磨损了，露出了下面的地面。跑步时要注意，尤其是晚上，避免崴脚。",
+      "score": 3.0,
+      "view_count": 123,
+      "comments": []
+    },
+    {
+      "spot_id": 24,
+      "username": "coder_C",
+      "title": "天猫超市的文具价格",
+      "content": "在天猫超市买文具，发现比校外文具店贵。一支普通的签字笔要五块钱，建议需要大量文具的同学还是网购吧。",
+      "score": 2.5,
+      "view_count": 98,
+      "comments": []
+    },
+    {
+      "spot_id": 30,
+      "username": "student_A",
+      "title": "教学实验楼的教室编号规律",
+      "content": "教学实验楼的教室编号，一楼是101-110，二楼是201-210，以此类推。掌握规律后找教室就容易多了。",
+      "score": 4.0,
+      "view_count": 134,
+      "comments": []
+    },
+    {
+      "spot_id": 54,
+      "username": "foodie_B",
+      "title": "北邮星塔的开放时间",
+      "content": "北邮星塔开放时间是早上8点到晚上10点，周末也一样。想去看夜景的同学注意时间，别白跑一趟。",
+      "score": 4.2,
+      "view_count": 156,
+      "comments": []
+    },
+    {
+      "spot_id": 18,
+      "username": "coder_C",
+      "title": "风味餐厅的支付方式",
+      "content": "风味餐厅支持校园卡、微信、支付宝支付，很方便。不过校园卡支付有折扣，建议还是用校园卡。",
+      "score": 4.3,
+      "view_count": 145,
+      "comments": []
+    },
+    {
+      "spot_id": 73,
+      "username": "student_A",
+      "title": "智慧教室的隔音效果",
+      "content": "智慧教室的隔音效果很好，关上门后几乎听不到走廊的声音。适合需要安静环境的小组讨论或线上会议。",
+      "score": 4.5,
+      "view_count": 167,
+      "comments": []
+    },
+    {
+      "spot_id": 22,
+      "username": "foodie_B",
+      "title": "活动中心的社团招新",
+      "content": "新学期活动中心有社团招新，各个社团摆摊展示，很热闹。找到了感兴趣的摄影社和话剧社，报名参加了。",
+      "score": 4.6,
+      "view_count": 189,
+      "comments": [
+        {"username": "student_A", "content": "摄影社怎么样？我也想去", "score": 4.5}
+      ]
+    },
+    {
+      "spot_id": 19,
+      "username": "coder_C",
+      "title": "教工食堂的餐桌清洁",
+      "content": "教工食堂的餐桌擦得很干净，几乎看不到油渍。而且有专门放餐盘的地方，用餐环境比学生食堂好很多。",
+      "score": 4.4,
+      "view_count": 156,
+      "comments": []
+    },
+    {
+      "spot_id": 67,
+      "username": "student_A",
+      "title": "网安学院的学术海报",
+      "content": "网安学院走廊上贴满了学术会议海报和论文摘要，虽然看不懂全部内容，但能感受到浓厚的学术氛围。",
+      "score": 4.2,
+      "view_count": 123,
+      "comments": []
+    },
+    {
+      "spot_id": 53,
+      "username": "foodie_B",
+      "title": "医务室的药品种类",
+      "content": "医务室的药品种类比较基础，感冒发烧肠胃炎的药都有。但如果是特殊病症或慢性病，还是得去医院开药。",
+      "score": 3.5,
+      "view_count": 112,
+      "comments": []
+    },
+    {
+      "spot_id": 44,
+      "username": "coder_C",
+      "title": "学生食堂的节日特色菜",
+      "content": "端午节学生食堂有卖粽子，咸甜都有。买了个咸肉粽，味道还不错，就是稍微有点贵，五块钱一个。",
+      "score": 3.8,
+      "view_count": 145,
+      "comments": [
+        {"username": "foodie_B", "content": "甜粽更好吃，豆沙馅的", "score": 4.0}
+      ]
+    },
+    {
+      "spot_id": 57,
+      "username": "student_A",
+      "title": "图书馆的电子阅览室",
+      "content": "图书馆的电子阅览室电脑配置不错，运行流畅，还有专业软件可以使用。适合需要处理数据或做设计的同学。",
+      "score": 4.3,
+      "view_count": 167,
+      "comments": []
+    },
+    {
+      "spot_id": 26,
+      "username": "foodie_B",
+      "title": "公共教学楼的保洁阿姨",
+      "content": "公共教学楼的保洁阿姨很负责，经常看到她们在打扫卫生，教室和走廊都很干净。感谢她们的辛勤工作。",
+      "score": 4.7,
+      "view_count": 134,
+      "comments": [
+        {"username": "student_A", "content": "确实，校园环境靠大家维护", "score": 4.5}
+      ]
+    },
+    {
+      "spot_id": 10,
+      "username": "coder_C",
+      "title": "燕北园的秋日落叶",
+      "content": "秋天燕北园的落叶铺满了小路，踩上去沙沙作响。金黄的银杏叶特别漂亮，很多人在拍照，是校园里的一景。",
+      "score": 4.6,
+      "view_count": 178,
+      "comments": []
+    },
+    {
+      "spot_id": 42,
+      "username": "student_A",
+      "title": "学生食堂的早餐时间",
+      "content": "学生食堂早餐6:30开始供应，到9:00结束。想吃新鲜油条和豆浆的话，建议8点前去，晚了可能就没了。",
+      "score": 4.0,
+      "view_count": 145,
+      "comments": []
+    },
+    {
+      "spot_id": 46,
+      "username": "foodie_B",
+      "title": "运动场的器材租赁",
+      "content": "运动场可以租赁篮球、足球、羽毛球等器材，需要押学生证。器材有点旧，但还能用，适合临时想运动没带装备的同学。",
+      "score": 3.8,
+      "view_count": 123,
+      "comments": []
+    },
+    {
+      "spot_id": 24,
+      "username": "coder_C",
+      "title": "天猫超市的便当盒饭",
+      "content": "天猫超市有卖便当盒饭，15-20元一份，加热就能吃。味道一般，但比方便面健康，适合晚上学习饿了当夜宵。",
+      "score": 3.5,
+      "view_count": 112,
+      "comments": []
+    },
+    {
+      "spot_id": 30,
+      "username": "student_A",
+      "title": "教学实验楼的实验室",
+      "content": "教学实验楼的实验室设备很先进，但只对相关专业学生开放。路过时看到里面的设备，感觉很羡慕。",
+      "score": 4.2,
+      "view_count": 134,
+      "comments": []
+    },
+    {
+      "spot_id": 54,
+      "username": "foodie_B",
+      "title": "北邮星塔的旋转楼梯",
+      "content": "北邮星塔的旋转楼梯设计很有特色，爬上去有点晕，但拍照效果很好。就是上下楼梯要注意安全，别光顾着拍照。",
+      "score": 4.3,
+      "view_count": 156,
+      "comments": []
+    },
+    {
+      "spot_id": 18,
+      "username": "coder_C",
+      "title": "风味餐厅的等位系统",
+      "content": "风味餐厅人多时需要等位，有电子叫号系统，可以在旁边坐着等。避免了拥挤排队，体验不错。",
+      "score": 4.2,
+      "view_count": 145,
+      "comments": []
+    },
+    {
+      "spot_id": 73,
+      "username": "student_A",
+      "title": "智慧教室的无线投屏",
+      "content": "智慧教室支持无线投屏，手机或电脑的内容可以直接投到大屏幕上。小组展示时很方便，不用插各种线了。",
+      "score": 4.6,
+      "view_count": 167,
+      "comments": [
+        {"username": "coder_C", "content": "这个功能好用，我们pre经常用", "score": 4.5}
+      ]
+    },
+    {
+      "spot_id": 22,
+      "username": "foodie_B",
+      "title": "活动中心的舞蹈排练室",
+      "content": "活动中心有舞蹈排练室，镜子墙、把杆、音响设备齐全。舞蹈社的同学经常在这里排练，有时也对外开放预约。",
+      "score": 4.4,
+      "view_count": 178,
+      "comments": []
+    },
+    {
+      "spot_id": 19,
+      "username": "coder_C",
+      "title": "教工食堂的外卖服务",
+      "content": "教工食堂可以点外卖，通过校园APP下单，送到宿舍楼下。适合不想出门的雨天或懒得动的日子。",
+      "score": 4.3,
+      "view_count": 156,
+      "comments": []
+    },
+    {
+      "spot_id": 67,
+      "username": "student_A",
+      "title": "网安学院的学习氛围",
+      "content": "晚上经过网安学院，看到很多实验室还亮着灯，同学们在熬夜做项目。学术氛围浓厚，但也有点担心大家的健康。",
+      "score": 4.2,
+      "view_count": 145,
+      "comments": []
+    },
+    {
+      "spot_id": 53,
+      "username": "foodie_B",
+      "title": "医务室的疫苗接种",
+      "content": "医务室可以接种一些常见疫苗，比如流感疫苗、HPV疫苗等。需要提前预约，价格比医院便宜一些。",
+      "score": 4.0,
+      "view_count": 134,
+      "comments": []
+    },
+    {
+      "spot_id": 44,
+      "username": "coder_C",
+      "title": "学生食堂的餐具回收处",
+      "content": "学生食堂的餐具回收处经常堆满餐盘，高峰期甚至溢出来。建议大家用餐后及时回收餐具，减轻工作人员负担。",
+      "score": 3.5,
+      "view_count": 123,
+      "comments": []
+    },
+    {
+      "spot_id": 57,
+      "username": "student_A",
+      "title": "图书馆的饮水机",
+      "content": "图书馆每层都有饮水机，提供冷热水。自带水杯可以免费接水，环保又省钱。就是有时候排队接水的人有点多。",
+      "score": 4.3,
+      "view_count": 156,
+      "comments": []
+    },
+    {
+      "spot_id": 26,
+      "username": "foodie_B",
+      "title": "公共教学楼的电源插座",
+      "content": "公共教学楼有些教室的电源插座很少，而且很多被桌子挡住，不方便使用。建议学校增加插座数量并改进位置设计。",
+      "score": 2.8,
+      "view_count": 134,
+      "comments": []
+    },
+    {
+      "spot_id": 10,
+      "username": "coder_C",
+      "title": "燕北园的晨读角落",
+      "content": "燕北园早上有很多同学在晨读，英语、古文都有。环境清幽，鸟语花香，是个晨读的好地方。",
+      "score": 4.5,
+      "view_count": 145,
+      "comments": [
+        {"username": "student_A", "content": "几点开始有人？想去体验", "score": 4.3}
+      ]
+    },
+    {
+      "spot_id": 42,
+      "username": "student_A",
+      "title": "学生食堂的卫生检查",
+      "content": "今天看到有卫生检查人员在学生食堂检查，穿着白大褂，很专业的样子。看到这个对食堂卫生更有信心了。",
+      "score": 4.2,
+      "view_count": 123,
+      "comments": []
+    },
+    {
+      "spot_id": 46,
+      "username": "foodie_B",
+      "title": "运动场的卫生间",
+      "content": "运动场的卫生间有点远，而且设施比较旧。运动后想洗手或换衣服不太方便，希望学校能改善一下。",
+      "score": 2.5,
+      "view_count": 112,
+      "comments": []
+    },
+    {
+      "spot_id": 24,
+      "username": "coder_C",
+      "title": "天猫超市的会员制度",
+      "content": "天猫超市有会员制度，充值200送20，积分可以换购商品。经常在这里购物的同学可以考虑办一个，能省一点。",
+      "score": 4.0,
+      "view_count": 134,
+      "comments": []
+    },
+    {
+      "spot_id": 30,
+      "username": "student_A",
+      "title": "教学实验楼的防火演习",
+      "content": "今天教学实验楼进行了防火演习，警报响起，大家有序疏散到空地。虽然有点突然，但这种演习很重要。",
+      "score": 4.3,
+      "view_count": 145,
+      "comments": []
+    },
+    {
+      "spot_id": 54,
+      "username": "foodie_B",
+      "title": "北邮星塔的传说",
+      "content": "听学长说，北邮星塔有个传说，情侣一起爬上去就会永远在一起。不知道真假，但很多情侣确实会去那里。",
+      "score": 4.2,
+      "view_count": 178,
+      "comments": [
+        {"username": "student_A", "content": "单身狗默默路过", "score": 3.8}
+      ]
+    },
+    {
+      "spot_id": 18,
+      "username": "coder_C",
+      "title": "风味餐厅的取餐速度",
+      "content": "风味餐厅的点餐取餐速度很快，下单后五分钟左右就能拿到。适合时间紧张的同学，不用等太久。",
+      "score": 4.4,
+      "view_count": 156,
+      "comments": []
+    },
+    {
+      "spot_id": 73,
+      "username": "student_A",
+      "title": "智慧教室的清洁维护",
+      "content": "智慧教室的设备经常有专人清洁维护，屏幕、键盘都很干净。使用起来很舒心，感谢工作人员的努力。",
+      "score": 4.5,
+      "view_count": 145,
+      "comments": []
+    },
+    {
+      "spot_id": 22,
+      "username": "foodie_B",
+      "title": "活动中心的桌游室",
+      "content": "活动中心有桌游室，可以玩狼人杀、剧本杀、各种桌游。周末和同学来这里玩，是很好的休闲方式。",
+      "score": 4.6,
+      "view_count": 189,
+      "comments": [
+        {"username": "coder_C", "content": "需要预约吗？还是直接去？", "score": 4.4}
+      ]
+    },
+    {
+      "spot_id": 19,
+      "username": "coder_C",
+      "title": "教工食堂的节日装饰",
+      "content": "圣诞节教工食堂装饰得很漂亮，有圣诞树、彩灯、雪花贴纸。节日氛围浓厚，用餐心情都变好了。",
+      "score": 4.5,
+      "view_count": 167,
+      "comments": []
+    },
+    {
+      "spot_id": 67,
+      "username": "student_A",
+      "title": "网安学院的校招信息",
+      "content": "网安学院公告栏贴满了各大互联网公司的校招信息，薪资待遇都很诱人。给了我们努力学习的动力。",
+      "score": 4.3,
+      "view_count": 156,
+      "comments": []
+    },
+    {
+      "spot_id": 53,
+      "username": "foodie_B",
+      "title": "医务室的体温计",
+      "content": "去医务室看病，先用电子体温计量体温，效率很高。比传统水银体温计方便，也更安全。",
+      "score": 4.2,
+      "view_count": 123,
+      "comments": []
+    },
+    {
+      "spot_id": 44,
+      "username": "coder_C",
+      "title": "学生食堂的垃圾分类",
+      "content": "学生食堂推行垃圾分类，有厨余垃圾、其他垃圾、可回收物等不同垃圾桶。刚开始不习惯，但环保是好事。",
+      "score": 4.0,
+      "view_count": 134,
+      "comments": []
+    },
+    {
+      "spot_id": 57,
+      "username": "student_A",
+      "title": "图书馆的失物招领",
+      "content": "图书馆有失物招领处，丢失的物品可以来这里找。我的水杯就是在这里找到的，很感谢工作人员。",
+      "score": 4.5,
+      "view_count": 145,
+      "comments": []
+    },
+    {
+      "spot_id": 26,
+      "username": "foodie_B",
+      "title": "公共教学楼的节能措施",
+      "content": "公共教学楼有节能提示，最后离开的人要关灯关空调。这个措施很好，节约能源，培养大家的环保意识。",
+      "score": 4.3,
+      "view_count": 123,
+      "comments": []
+    },
+    {
+      "spot_id": 10,
+      "username": "coder_C",
+      "title": "燕北园的座椅维护",
+      "content": "燕北园的木质座椅有些损坏了，坐着不太安全。希望学校能定期检查和维护，保障同学们的使用安全。",
+      "score": 3.0,
+      "view_count": 112,
+      "comments": []
+    },
+    {
+      "spot_id": 42,
+      "username": "student_A",
+      "title": "学生食堂的打包服务",
+      "content": "学生食堂提供打包服务，餐盒一个五毛钱。适合想带回宿舍吃或者赶时间的同学，就是不太环保。",
+      "score": 3.8,
+      "view_count": 134,
+      "comments": [
+        {"username": "foodie_B", "content": "可以自带饭盒，更环保", "score": 4.0}
+      ]
+    }
+  ]
+}

@@ -149,3 +149,29 @@ async def rag_chat(
 
     except Exception as e:
         print
+
+# ==========================================
+# ➕ 新增：日记润色接口
+# ==========================================
+class PolishRequest(BaseModel):
+    content: str
+
+@router.post("/polish")
+async def polish_diary(request: PolishRequest):
+    """
+    接收一段文字，让 AI 把它改写得更优美
+    """
+    user_content = request.content
+    system_prompt = "你是一个文学编辑。请润色用户的日记，使其文笔更优美、生动，但不要改变原意。"
+    
+    try:
+        response = await client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content}
+            ]
+        )
+        return {"polished": response.choices[0].message.content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 from contextlib import asynccontextmanager
+from thefuzz import process  # 用于模糊搜索
 # 导入我们自己写的模块
 import auth               # 身份认证模块
 import diary              # 日记模块 (刚才写的)
@@ -74,6 +75,48 @@ app.include_router(upload.router) # <--- 3. 启用上传接口
 app.include_router(ai.router)     # AI 助手
 # ==========================================
 
+# 【新增】地图查询接口
+# 1. 获取所有景点 (用于前端下拉框)
+@app.get("/spots/list")
+def get_all_spots():
+    if not global_graph:
+        return []
+    # 只返回 type='spot' 的景点，不返回路点
+    return [spot for spot in global_graph.spots.values() if spot.type == 'spot']
+
+# 2. 模糊搜索 (解决输入不准的问题)
+@app.get("/spots/search")
+def search_spots(query: str, limit: int = 5):
+    """
+    输入 "食堂" -> 返回 [{"name": "学生食堂", ...}, ...]
+    """
+    if not global_graph:
+        return []
+
+    # 1. 拿到所有景点名字 map: {"学生食堂": 44, "教工食堂": 19}
+    spot_map = {s.name: s.id for s in global_graph.spots.values() if s.type == 'spot'}
+    
+    if not spot_map:
+        return []
+
+    # 2. 模糊匹配
+    matches = process.extract(query, spot_map.keys(), limit=limit)
+    
+    results = []
+    for name, score in matches:
+        if score > 40:  # 匹配度大于 40 分才显示
+            spot_id = spot_map[name]
+            spot_obj = global_graph.spots[spot_id]
+            results.append({
+                "id": spot_id,
+                "name": name,
+                "score": score,
+                "x": spot_obj.x, # 把坐标也带上，方便前端定位
+                "y": spot_obj.y
+            })
+            
+    return results
+
 # --- 定义导航请求的数据格式 ---
 # 【修改】导航请求模型
 # 对应 PPT 需求：
@@ -96,6 +139,7 @@ class NavigateRequest(BaseModel):
 class NavigateResponse(BaseModel):
     path_ids: List[int]
     path_names: List[str]
+    path_coords: List[List[float]] # ➕【新增这一行】返回像素坐标供前端画线
     total_cost: float
     cost_unit: str  # 告诉前端单位是 "米" 还是 "秒"
 
@@ -195,6 +239,16 @@ def navigate(request: NavigateRequest):
 
     # 将 ID 转换为人类可读的景点名称
     path_names = [global_graph.get_spot_name(pid) for pid in path_ids]
+
+    # ➕ 提取路径上每个点的像素坐标 [x, y]，供前端在图片上画线
+    path_coords = []
+    for pid in path_ids:
+        # 这里的 global_graph 就是你加载进内存的“地图数据”
+        if pid in global_graph.spots:
+            spot = global_graph.spots[pid]
+            path_coords.append([spot.x, spot.y])
+        else:
+            path_coords.append([0, 0]) # 防止报错
     
     # 确定单位 (距离用米，时间用秒)
     unit = "米" if request.strategy == 'dist' else "秒"
@@ -202,6 +256,7 @@ def navigate(request: NavigateRequest):
     return {
         "path_ids": path_ids,
         "path_names": path_names,
+        "path_coords": path_coords,  # 返回坐标数据
         "total_cost": round(cost, 1), # 保留1位小数
         "cost_unit": unit
     }
