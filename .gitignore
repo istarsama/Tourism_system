@@ -13,5 +13,10 @@ venv/
 .DS_Store
 Thumbs.db
 
-# VS Code 配置 (个人配置不需要同步)
+# 忽略上传的具体文件 (保留文件夹结构)
+uploads/*
+!uploads/.gitkeep
+
+# 忽略 IDE 配置
 .vscode/
+.idea/

@@ -26,7 +26,7 @@ if not SECRET_KEY:
 router = APIRouter(prefix="/auth", tags=["用户认证"])
 
 # 改用 argon2 (现在的标准)
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # --- 数据模型 ---
 class UserRegister(BaseModel):
