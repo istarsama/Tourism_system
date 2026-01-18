@@ -3,13 +3,14 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from openai import AsyncOpenAI
 from sqlmodel import Session, select, or_
+import random
 
 # 导入数据库相关工具
 from database import get_session
 from models import Diary
 
 # 配置 (记得保留你的 Key)
-DEEPSEEK_API_KEY = "**********************" 
+DEEPSEEK_API_KEY = "sk-e99be0d431384805aa79a9d2dbef7e98" 
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
 client = AsyncOpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
@@ -27,35 +28,37 @@ def search_database_tool(session: Session, keywords_str: str):
     """
     print(f"🕵️ AI提取的关键词组: {keywords_str}")
     
-    # 1. 把字符串切分成列表 (例如 "食堂 吃饭" -> ["食堂", "吃饭"])
     keywords = keywords_str.split()
-    
-    # 2. 如果没词，直接返回
     if not keywords:
         return "没有提取到有效关键词。"
 
-    # 3. 构建超级宽容的搜索条件
-    # 逻辑：(标题含词1 OR 内容含词1) OR (标题含词2 OR 内容含词2) ...
     conditions = []
     for kw in keywords:
         conditions.append(Diary.title.contains(kw))
         conditions.append(Diary.content.contains(kw))
     
-    # 4. 执行查询
-    # where(or_(*conditions)) 意思是：只要满足上面任意一个条件就算搜到
-    query = select(Diary).where(or_(*conditions)).limit(5)
-    
+    # 1. 先查出所有符合条件的数据 (去掉 limit)
+    query = select(Diary).where(or_(*conditions))
     results = session.exec(query).all()
     
-    # 5. 整理结果
-    if not results:
+    # 2. 如果结果太多，随机抽取 20 条，而不是只取前 5 条
+    # 这样能保证 AI 每次可能看到不同的日记，而且涵盖面更广
+    if len(results) > 30:
+        print(f"   ⚠️ 搜到 {len(results)} 条，随机采样 30 条给 AI...")
+        sampled_results = random.sample(results, 30)
+    else:
+        sampled_results = results
+    
+    if not sampled_results:
         print("   ❌ 数据库搜索结果: 0 条")
         return "数据库里没有找到相关日记。"
     
-    print(f"   ✅ 数据库搜索结果: {len(results)} 条")
+    print(f"   ✅ 提供给 AI 的参考日记: {len(sampled_results)} 条")
+    
     data_text = ""
-    for diary in results:
-        data_text += f"【标题】{diary.title}\n【内容】{diary.content}\n【评分】{diary.score}\n---\n"
+    for diary in sampled_results:
+        # 我们可以简化一下给 AI 的内容，节省 Token
+        data_text += f"- {diary.content} (评分:{diary.score})\n"
     
     return data_text
 
