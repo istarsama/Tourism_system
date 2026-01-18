@@ -7,7 +7,7 @@ from datetime import datetime
 
 # 导入你自己写的工具模块
 from database import get_session
-from models import Diary, User
+from models import Diary, User, Comment  # 👈 确保这里导入了 Comment 模型
 from auth import get_current_user
 
 # 创建路由器
@@ -22,10 +22,23 @@ class DiaryCreate(BaseModel):
     spot_id: int          # 景点ID
     title: str            # 标题
     content: str          # 内容
-    score: float = 5.0    # 评分
+    # score: float = 5.0    # ❌ 禁止自评：发布时不能自己打分了，初始默认为0
     # 新增: 媒体文件链接列表 (图片或视频的URL)
     # 前端需要把图片上传到别的地方，然后把链接发给我们
     media_files: List[str] = [] 
+
+# 🆕 新增：前端发表评论时发送的数据格式
+class CommentCreate(BaseModel):
+    diary_id: int   # 评论哪篇日记
+    content: str    # 评论内容
+    score: float    # 用户打的分数 (1.0 - 5.0)
+
+# 🆕 新增：返回给前端看的评论格式
+class CommentRead(BaseModel):
+    user_name: str  # 评论者名字
+    content: str    # 评论内容
+    score: float    # 打分
+    created_at: datetime # 评论时间
 
 # 2. 我们返回给前端的数据格式 (显示日记用)
 class DiaryRead(BaseModel):
@@ -34,7 +47,7 @@ class DiaryRead(BaseModel):
     user_name: str        # 作者名字
     title: str
     content: str
-    score: float
+    score: float          # 当前平均评分
     view_count: int       # 浏览量
     media_files: List[str]# 图片列表 (我们会把字符串还原回列表发给前端)
     created_at: datetime
@@ -52,6 +65,7 @@ def create_diary(
     """
     【发布日记接口】
     功能：保存用户提交的日记，包括图片链接。
+    注意：新发布的日记评分为 0，等待其他用户打分。
     """
     
     # 1. 把前端传来的图片列表 (List) 转成 字符串 (String)
@@ -64,7 +78,7 @@ def create_diary(
         spot_id=diary_data.spot_id,
         title=diary_data.title,
         content=diary_data.content,
-        score=diary_data.score,
+        score=0.0,                      # 👈 初始评分设为 0.0
         media_json=media_json_str,      # 存入转换后的字符串
         view_count=0                    # 刚发布，浏览量为0
     )
@@ -88,6 +102,54 @@ def create_diary(
         created_at=new_diary.created_at
     )
 
+# 🆕 【新增接口】发表评论并更新评分 (核心逻辑)
+@router.post("/comment")
+def add_comment(
+    comment_data: CommentCreate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user) # 必须登录才能评论
+):
+    """
+    【发表评论接口】
+    功能：
+    1. 保存用户的评论和打分。
+    2. 触发【自动评分算法】：重新计算该日记的平均分。
+    """
+    # 1. 检查日记是否存在
+    diary = session.get(Diary, comment_data.diary_id)
+    if not diary:
+        raise HTTPException(status_code=404, detail="日记不存在")
+
+    # 2. 保存新的评论数据到 Comment 表
+    new_comment = Comment(
+        user_id=current_user.id,       # 谁评的
+        diary_id=comment_data.diary_id,# 评的哪篇
+        content=comment_data.content,  # 内容
+        score=comment_data.score       # 打分
+    )
+    session.add(new_comment)
+    session.commit() # 先保存评论，确保数据入库
+    
+    # 3. 🧠【核心算法：重新计算平均分】
+    # 第一步：从数据库查出这篇日记的所有评论
+    comments = session.exec(select(Comment).where(Comment.diary_id == diary.id)).all()
+    
+    # 第二步：计算总分
+    # 使用 Python 的 sum 函数，把所有评论的 score 加起来
+    total_score = sum(c.score for c in comments)
+    
+    # 第三步：计算平均值 (总分 / 评论人数)
+    if len(comments) > 0:
+        new_average = total_score / len(comments)
+    else:
+        new_average = 0.0
+        
+    # 第四步：更新 Diary 表的主分数
+    diary.score = round(new_average, 1) # 保留1位小数，比较美观
+    session.add(diary)
+    session.commit() # 保存最新的平均分
+    
+    return {"message": "评论成功", "new_average_score": diary.score}
 
 @router.get("/detail/{diary_id}", response_model=DiaryRead)
 def get_diary_detail(diary_id: int, session: Session = Depends(get_session)):
@@ -126,8 +188,31 @@ def get_diary_detail(diary_id: int, session: Session = Depends(get_session)):
         created_at=diary.created_at
     )
 
-#######################################
-# 🔄 替换整个 get_spot_diaries 函数
+# 🆕 【新增接口】获取某篇日记的所有评论列表
+@router.get("/{diary_id}/comments", response_model=List[CommentRead])
+def get_diary_comments(diary_id: int, session: Session = Depends(get_session)):
+    """
+    【获取评论列表接口】
+    功能：展示某篇日记下所有的用户评论。
+    """
+    # 从 Comment 表里查，条件是 diary_id 匹配
+    comments = session.exec(select(Comment).where(Comment.diary_id == diary_id)).all()
+    
+    result = []
+    for c in comments:
+        # 查一下评论人的名字
+        user = session.get(User, c.user_id)
+        user_name = user.username if user else "匿名用户"
+        
+        # 组装返回数据
+        result.append(CommentRead(
+            user_name=user_name,
+            content=c.content,
+            score=c.score,
+            created_at=c.created_at
+        ))
+    return result
+
 @router.get("/spot/{spot_id}", response_model=List[DiaryRead])
 def get_spot_diaries(
     spot_id: int, 
@@ -157,9 +242,9 @@ def get_spot_diaries(
     diaries = session.exec(query).all()
     
     # 4. 组装数据返回给前端 (把 JSON 字符串还原成列表)
+    # 为了避免代码重复，你可以把这段逻辑封装成函数，但这里为了直观，我们直接写
     result = []
     for d in diaries:
-        # 顺便查一下作者名字
         user = session.get(User, d.user_id)
         user_name = user.username if user else "未知用户"
         
@@ -171,15 +256,12 @@ def get_spot_diaries(
             content=d.content,
             score=d.score,
             view_count=d.view_count,
-            # 如果有媒体文件就解析，没有就是空列表
             media_files=json.loads(d.media_json) if d.media_json else [],
             created_at=d.created_at
         ))
         
     return result
 
-
-# ➕ 把这段代码加到文件最后面
 
 @router.get("/search", response_model=List[DiaryRead])
 def search_diaries(

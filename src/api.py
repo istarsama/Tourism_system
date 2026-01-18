@@ -12,6 +12,7 @@ from models import CampusGraph
 from algorithms import dijkstra_search
 from utils import load_graph_from_json, get_data_path
 import upload # 文件上传模块
+import ai     # AI 助手模块
 
 # 2. 关键修复：导入数据库初始化函数
 from database import init_db 
@@ -67,6 +68,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(auth.router)   # 用户登录注册
 app.include_router(diary.router)  # 日记功能
 app.include_router(upload.router) # <--- 3. 启用上传接口
+app.include_router(ai.router)     # AI 助手
 # ==========================================
 
 
