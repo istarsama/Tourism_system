@@ -10,7 +10,7 @@ from database import get_session
 from models import Diary
 
 # 配置 (记得保留你的 Key)
-DEEPSEEK_API_KEY = "sk-e99be0d431384805aa79a9d2dbef7e98" 
+DEEPSEEK_API_KEY = "********" 
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
 client = AsyncOpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
