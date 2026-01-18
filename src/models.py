@@ -93,3 +93,19 @@ class Diary(SQLModel, table=True):
     
     score: float = Field(default=5.0) # 评分
     created_at: datetime = Field(default_factory=datetime.now) # 发布时间
+
+# ==========================================
+class Comment(SQLModel, table=True):
+    """
+    【评论/评分表】
+    存储用户对某篇日记的评价和打分
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    
+    user_id: int   # 谁评的
+    diary_id: int  # 评的哪篇日记
+    
+    content: str   # 评论内容 (比如: "写得真好！")
+    score: float   # 打分 (1.0 - 5.0)
+    
+    created_at: datetime = Field(default_factory=datetime.now)

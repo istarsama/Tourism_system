@@ -8,6 +8,7 @@ dependencies = [
     "argon2-cffi>=25.1.0",
     "cryptography>=46.0.3",
     "fastapi>=0.128.0",
+    "openai>=2.15.0",
     "passlib[bcrypt]>=1.7.4",
     "pyjwt>=2.10.1",
     "pymysql>=1.1.2",
