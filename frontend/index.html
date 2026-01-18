@@ -4,17 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>校园智能导游系统</title>
+    <!-- 网页图标 -->
+    <link rel="icon" href="../data/tag.png" type="image/png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="extra.css">
 </head>
 <body>
+    <!-- 预加载地图背景图 (隐藏) -->
+    <img id="mapBgImage" src="./map.png" alt="map" style="display:none;">
+
+    <!-- 侧边栏切换按钮 (浮动在左上角) -->
+    <button id="sidebar-toggle" class="sidebar-toggle" title="切换侧边栏">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+
     <div class="container">
         <!-- ============================
              左侧控制面板
              包含：用户信息、导航控制、日记列表
              ============================ -->
         <div class="sidebar">
-            <h1>🎒 校园导游</h1>
+            <h1><img src="../data/xiaohui.jpg" class="sidebar-logo"> 校园导游</h1>
             
             <!-- 模块 1：用户状态面板 (登录/用户信息) -->
             <div class="user-panel" id="user-panel">
@@ -40,8 +54,20 @@
                 <div class="control-panel">
                     <!-- 起终点状态显示 -->
                     <div class="status-box">
-                        <p>起点: <span id="start-node" class="placeholder">请在地图上点击</span></p>
-                        <p>终点: <span id="end-node" class="placeholder">请在地图上点击</span></p>
+                        <div class="search-input-group">
+                            <label>起点:</label>
+                            <div class="input-wrapper">
+                                <input type="text" id="start-node-input" placeholder="在地图点击或搜索..." autocomplete="off">
+                                <ul id="start-node-list" class="suggestion-list hidden"></ul>
+                            </div>
+                        </div>
+                        <div class="search-input-group">
+                            <label>终点:</label>
+                            <div class="input-wrapper">
+                                <input type="text" id="end-node-input" placeholder="在地图点击或搜索..." autocomplete="off">
+                                <ul id="end-node-list" class="suggestion-list hidden"></ul>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- 导航策略选择 -->
@@ -124,7 +150,7 @@
             <div class="chat-panel" id="chat-panel">
                 <div class="chat-header" id="chat-header">
                     <h4>🤖 AI 导游助手</h4>
-                    <span id="chat-toggle">_</span>
+                    <!-- 最小化按钮已移除，直接点击 Header 即可切换 -->
                 </div>
                 <div class="chat-messages" id="chat-messages">
                     <div class="message ai">你好！我是校园AI助手，有什么可以帮你的吗？你可以问我关于旅游日记的问题哦。</div>

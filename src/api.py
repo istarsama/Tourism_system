@@ -63,10 +63,9 @@ app.add_middleware(
 
 # --- 挂载路由 (把各个模块的接口装进来) ---
 # ==========================================
-# 1. 挂载静态文件目录
-# 意思就是：当用户访问 http://.../uploads/xxx.jpg 时，
-# FastAPI 会自动去项目根目录下的 'uploads' 文件夹里找对应的文件给我们看。
+# 1. 挂载静态文件目录 (非根路径的先挂载)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/data", StaticFiles(directory="data"), name="data")
 
 # 2. 注册路由
 app.include_router(auth.router)   # 用户登录注册
@@ -260,3 +259,8 @@ def navigate(request: NavigateRequest):
         "total_cost": round(cost, 1), # 保留1位小数
         "cost_unit": unit
     }
+# ==========================================
+# 【重要】前端静态文件挂载 - 必须放在所有 API 路由之后
+# 这样 API 路由优先匹配，未匹配的请求才会走静态文件
+# ==========================================
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
