@@ -1,17 +1,27 @@
 import json
+from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from openai import AsyncOpenAI
 from sqlmodel import Session, select, or_
 import random
+import os
 
 # 导入数据库相关工具
 from database import get_session
 from models import Diary
 
+# 1. 加载 .env 文件里的变量
+load_dotenv()
 # 配置 (记得保留你的 Key)
-DEEPSEEK_API_KEY = "********" 
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+
+if not DEEPSEEK_API_KEY:
+    # 这里我们只是打印警告，没有直接报错退出，防止影响其他功能启动
+    # 但如果调用 AI 接口就会报错
+    print("⚠️  警告: 未找到 DEEPSEEK_API_KEY 环境变量！AI 功能将无法使用。")
+    print("   请在项目根目录创建 .env 文件并填入密钥。")
 
 client = AsyncOpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
 router = APIRouter(prefix="/ai", tags=["AI Agent"])
