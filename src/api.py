@@ -104,6 +104,38 @@ class NavigateResponse(BaseModel):
 def read_root():
     return {"status": "ok", "message": "校园旅游系统后端正在运行"}
 
+@app.get("/graph")
+def get_graph():
+    """
+    返回前端渲染地图所需的节点和边数据
+    """
+    if not global_graph:
+        raise HTTPException(status_code=500, detail="地图数据未加载")
+    
+    # 1. 提取所有景点节点
+    # vars(obj) 可以把对象转成字典 {id:1, name:"...", x:10, y:20...}
+    nodes_data = [vars(spot) for spot in global_graph.spots.values()]
+    
+    # 2. 提取所有边 (去重)
+    # 因为是无向图逻辑，A->B 和 B->A 在算法里都有，但画图只需要一份
+    edges_data = []
+    seen_edges = set()
+    
+    for u_id, roads in global_graph.adj.items():
+        for road in roads:
+            # 使用排序后的 tuple 作为唯一标识 (1, 2) == (2, 1)
+            pair = tuple(sorted((road.u, road.v)))
+            if pair not in seen_edges:
+                edges_data.append({
+                    "u": road.u,
+                    "v": road.v,
+                    "distance": road.distance,
+                    # 如果前端需要显示拥挤度或类型，可以在这里加
+                })
+                seen_edges.add(pair)
+                
+    return {"nodes": nodes_data, "edges": edges_data}
+
 # --- 导航接口 ---
 @app.post("/navigate", response_model=NavigateResponse)
 def navigate(request: NavigateRequest):

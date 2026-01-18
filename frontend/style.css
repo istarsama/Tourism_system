@@ -1,9 +1,15 @@
+/* 
+ * =========================================================================
+ * 模块 1: 全局基础变量与样式重置
+ * 定义主题颜色、字体和页面基础布局
+ * =========================================================================
+ */
 :root {
-    --primary-color: #3b82f6;
-    --accent-color: #f59e0b;
-    --bg-color: #f3f4f6;
-    --panel-bg: white;
-    --text-color: #1f2937;
+    --primary-color: #3b82f6;  /* 主题蓝 */
+    --accent-color: #f59e0b;   /* 强调色(橙) */
+    --bg-color: #f3f4f6;       /* 背景灰 */
+    --panel-bg: white;         /* 面板白 */
+    --text-color: #1f2937;     /* 文字黑 */
 }
 
 body {
@@ -12,15 +18,21 @@ body {
     background-color: var(--bg-color);
     color: var(--text-color);
     height: 100vh;
-    overflow: hidden;
+    overflow: hidden; /* 防止出现双滚动条 */
 }
 
+/* 主容器：Flex 布局，左侧 Sidebar 右侧 Map */
 .container {
     display: flex;
     height: 100%;
 }
 
-/* Sidebar Styling */
+/* 
+ * =========================================================================
+ * 模块 2: 左侧边栏 (Sidebar)
+ * 包含导航控制、信息面板等
+ * =========================================================================
+ */
 .sidebar {
     width: 300px;
     background: var(--panel-bg);
@@ -29,13 +41,22 @@ body {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    overflow-y: auto;
+    overflow-y: auto; /* 内容过多时仅侧边栏滚动 */
     z-index: 10;
 }
 
+/* 排版基础 */
 h1 { margin-top: 0; font-size: 1.5rem; color: var(--primary-color); }
 h3 { margin: 0 0 10px 0; font-size: 1.1rem; border-bottom: 2px solid #eee; padding-bottom: 5px;}
 
+/* 
+ * =========================================================================
+ * 模块 3: 控件与交互元素
+ * 按钮、状态框、列表等组件
+ * =========================================================================
+ */
+
+/* 控制面板容器 */
 .control-panel {
     display: flex;
     flex-direction: column;
@@ -46,6 +67,7 @@ h3 { margin: 0 0 10px 0; font-size: 1.1rem; border-bottom: 2px solid #eee; paddi
     border: 1px solid #e2e8f0;
 }
 
+/* 起终点状态文本 */
 .status-box p {
     margin: 5px 0;
     font-size: 0.9rem;
@@ -53,7 +75,7 @@ h3 { margin: 0 0 10px 0; font-size: 1.1rem; border-bottom: 2px solid #eee; paddi
 
 .placeholder {
     color: #9ca3af;
-    font-style: italic;
+    font-style: italic; /* 未选中时斜体显示 */
 }
 
 .selected {
@@ -62,6 +84,7 @@ h3 { margin: 0 0 10px 0; font-size: 1.1rem; border-bottom: 2px solid #eee; paddi
     font-style: normal;
 }
 
+/* 通用按钮样式 */
 button {
     padding: 10px;
     border: none;
@@ -71,6 +94,7 @@ button {
     transition: all 0.2s;
 }
 
+/* 蓝色主按钮 (如开始导航) */
 #nav-btn {
     background: var(--primary-color);
     color: white;
@@ -83,12 +107,18 @@ button {
     background: #2563eb;
 }
 
+/* 白色重置按钮 */
 #reset-btn {
     background: white;
     border: 1px solid #cbd5e1;
 }
 
-/* Result & Info Panels */
+/* 
+ * =========================================================================
+ * 模块 4: 结果与详细信息面板
+ * 路由列表、景点介绍
+ * =========================================================================
+ */
 .hidden { display: none; }
 
 .path-list {
@@ -108,19 +138,25 @@ button {
     font-size: 0.9rem;
 }
 
-/* Map Area */
+/* 
+ * =========================================================================
+ * 模块 5: 地图主区域
+ * Canvas 容器与加载状态
+ * =========================================================================
+ */
 .map-container {
     flex: 1;
     position: relative;
     background: #e5e7eb;
     overflow: hidden;
-    cursor: grab;
+    cursor: grab; /* 表示可拖拽 */
 }
 
 canvas {
-    display: block;
+    display: block; /* 消除 margin collapse */
 }
 
+/* 居中加载提示 */
 .loading {
     position: absolute;
     top: 50%;
