@@ -1,3 +1,32 @@
+2026/1/18 16:30
+## ✨ 核心功能更新 (Key Features)
+
+### 1. 🧠 AI 智能导游 (AI Agent & RAG)
+* **DeepSeek 大模型接入**：集成 DeepSeek V3 接口，实现智能对话。
+* **RAG (检索增强生成)**：
+    * 实现了基于私有数据库的 **RAG Agent**。
+    * AI 能自动识别用户意图，提取关键词（如“食堂”、“银杏”）。
+    * 自动检索数据库中的日记内容，结合真实数据回答用户提问（如“根据大家反馈，学一食堂好吃吗？”）。
+* **日记润色**：利用 LLM 的文学能力，一键美化用户的日记草稿。
+
+### 📂 文件变动
+* `src/models.py`: 新增 `Comment` 表，修改 `Diary` 表 (增加 `view_count`, `media_json`, `score` 逻辑)。
+* `src/diary.py`: 重构发布接口，新增 `add_comment` (评论并算分)、`search_diaries` (搜索与排序) 接口。
+* `src/ai.py`: **[NEW]** 新增 AI 模块，包含 Chat、Polish 和 RAG 检索逻辑。
+* `src/upload.py`: **[NEW]** 新增文件上传处理逻辑。
+* `src/api.py`: 注册了 AI 和 Upload 路由，增加了静态文件挂载 (`Mount StaticFiles`)。
+
+### 🔌 新增 API 接口一览
+| 方法 | 路径 | 描述 |
+| :--- | :--- | :--- |
+| `POST` | `/ai/rag_chat` | **AI 智能问答** (支持查库) |
+| `POST` | `/ai/polish` | **AI 日记润色** |
+| `GET` | `/diaries/search` | **全站搜索** (支持 `sort_by=heat/score`) |
+| `POST` | `/diaries/comment` | **发表评论** (自动更新日记评分) |
+| `GET` | `/diaries/{id}/comments` | **获取评论列表** |
+| `POST` | `/upload` | **上传图片/视频** |
+
+################################
 2026/1/18 15:50
 版本更新：v2.1 - 更新得分算法机制，现在得分系统正常工作
 在ai.py中接入了deepseek-v3.2模型，在本地部署时填入API即可

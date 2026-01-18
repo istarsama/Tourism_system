@@ -1,0 +1,142 @@
+[
+  {
+    "title": "学一食堂的炸酱面，一言难尽",
+    "content": "慕名而来，败兴而归。面条煮得有点过，酱料偏咸，肉丁少得可怜。价格倒是便宜，但味道真的一般般，不如去校外吃。窗口阿姨态度也冷冰冰的，体验感不好。",
+    "spot_id": 5,
+    "score": 2.0,
+    "media_files": ["http://mock.img/noodle1.jpg", "http://mock.img/canteen5.jpg"]
+  },
+  {
+    "title": "主楼前的银杏黄了，美得像幅画",
+    "content": "秋天的主楼大道是北邮的明信片！金黄的银杏叶铺满了路，阳光透过叶子缝隙洒下来，特别温暖。好多同学在拍照，我也忍不住拍了好多张。这才是大学校园该有的样子啊，心情都变好了。",
+    "spot_id": 12,
+    "score": 5.0,
+    "media_files": ["http://mock.img/gingko1.jpg", "http://mock.img/gingko2.jpg", "http://mock.img/mainbuilding.jpg"]
+  },
+  {
+    "title": "图书馆七楼靠窗位，抢到就是赚到",
+    "content": "今天早上七点半就冲进图书馆，终于抢到了传说中的七楼窗边座位。视野开阔，阳光充足又不会刺眼，学累了看看窗外绿树特别解压。一坐下效率都高了，复习了一整章内容。完美的一天。",
+    "spot_id": 8,
+    "score": 4.9,
+    "media_files": ["http://mock.img/library_seat.jpg", "http://mock.img/library_view.jpg"]
+  },
+  {
+    "title": "教三-304的暖气太足了，热到犯困",
+    "content": "来教三上自习，没想到暖气开得跟蒸桑拿一样。穿了毛衣简直是个错误，热得头晕眼花，笔记都没记进去几行。中途出去透气好几次，下次一定找靠门或者靠窗的位置。",
+    "spot_id": 17,
+    "score": 2.5,
+    "media_files": ["http://mock.img/classroom304.jpg"]
+  },
+  {
+    "title": "偶遇“学长猫”，在长椅上晒太阳",
+    "content": "路过小松林，发现常驻的那只橘猫正慵懒地躺在长椅上晒太阳，肚皮朝天，毫不怕人。不愧是“学长”，这气场绝了。偷偷拍了张照片，没敢打扰它的美梦。日常被校园猫咪治愈。",
+    "spot_id": 23,
+    "score": 4.5,
+    "media_files": ["http://mock.img/cat_sunbath.jpg"]
+  },
+  {
+    "title": "西土城烤冷面，夜宵党的灵魂归宿",
+    "content": "晚上从实验室出来，饥肠辘辘，直奔小西门外的烤冷面小摊。大叔手艺没得说，加蛋加肠多加醋和香菜，热乎乎一份下肚，所有的疲惫都没了。虽然不健康，但快乐是真快乐。",
+    "spot_id": 33,
+    "score": 4.7,
+    "media_files": ["http://mock.img/kaolengmian.jpg"]
+  },
+  {
+    "title": "宿舍停水六小时，生活陷入僵局",
+    "content": "一大早起来发现停水了，通知说管道维修要到下午。没法洗漱，没法冲厕所，连喝水都成问题。狼狈地跑去教学楼接水，一整天都感觉浑身不对劲。求求后勤给点力吧！",
+    "spot_id": 42,
+    "score": 1.2,
+    "media_files": ["http://mock.img/dorm_notice.jpg"]
+  },
+  {
+    "title": "游泳馆初体验，水质比想象中好",
+    "content": "办了健身卡第一次来游泳馆。人不多，水很清，温度也合适。游了半小时挺累的，但很舒畅。更衣室和淋浴间也干净整洁。以后可以常来，争取学会自由泳。",
+    "spot_id": 28,
+    "score": 4.0,
+    "media_files": ["http://mock.img/pool1.jpg"]
+  },
+  {
+    "title": "今天就是普通的赶due一天",
+    "content": "流水账记录：早上起床，去食堂吃了豆浆油条。然后一整天都泡在图书馆写课程报告。中午点了外卖在休息区解决。晚上继续，直到闭馆音乐响起。肩膀好酸，但总算完成了初稿。平淡又充实。",
+    "spot_id": 8,
+    "score": 3.5,
+    "media_files": []
+  },
+  {
+    "title": "在时光广场喂鸽子，它们好胖",
+    "content": "下午没课，买了个面包来时光广场坐着。鸽子一点都不怕人，围过来等着投喂。它们被同学们养得圆滚滚的，飞起来都感觉吃力。看着它们争食，时间不知不觉就过去了。",
+    "spot_id": 19,
+    "score": 4.2,
+    "media_files": ["http://mock.img/pigeon1.jpg", "http://mock.img/square.jpg"]
+  },
+  {
+    "title": "避雷：咖啡厅新品“樱花拿铁”",
+    "content": "被海报吸引，点了杯樱花拿铁。颜值很高，粉粉的。但味道……一股奇怪的香精味，甜得发齁，咖啡味几乎被盖住了。28块钱一杯，心疼我的钱包。还是老老实实喝美式吧。",
+    "spot_id": 31,
+    "score": 1.8,
+    "media_files": ["http://mock.img/sakura_latte.jpg"]
+  },
+  {
+    "title": "校运会志愿者，累并快乐着",
+    "content": "当了一天田径场志愿者，负责引导和递水。太阳很大，跑来跑去很累。但看到运动员冲过终点的笑脸，听到他们的感谢，觉得特别值。还认识了好几个其他学院的朋友。很有意义的一天！",
+    "spot_id": 11,
+    "score": 4.6,
+    "media_files": ["http://mock.img/sports_volunteer.jpg"]
+  },
+  {
+    "title": "教学楼空教室寻宝记",
+    "content": "为了找个安静地方小组讨论，辗转了教一、教二、教三，终于在教四顶楼找到一个没课的空教室。虽然有点旧，桌椅吱呀响，但足够我们五个人用了。校园太大，找个合适的据点也不容易。",
+    "spot_id": 16,
+    "score": 3.8,
+    "media_files": ["http://mock.img/empty_classroom.jpg"]
+  },
+  {
+    "title": "宿舍小火锅，违规但美味",
+    "content": "（嘘）室友过生日，偷偷在宿舍用小功率锅煮了火锅。食材从校外超市买的，围在一起边吃边聊，看综艺，笑声不断。虽然提心吊胆怕被查，但这份热闹和温暖，是大学生活里珍贵的记忆。",
+    "spot_id": 42,
+    "score": 4.8,
+    "media_files": ["http://mock.img/dorm_hotpot.jpg"]
+  },
+  {
+    "title": "操场夜跑五公里，风很舒服",
+    "content": "最近压力大，晚上来操场跑步。戴着耳机，跟着节奏一圈一圈地跑。夜晚的风凉凉的，吹在出汗的身上很舒服。跑到最后有点累，但所有烦恼好像都随着汗水蒸发掉了。要坚持下去。",
+    "spot_id": 9,
+    "score": 4.5,
+    "media_files": ["http://mock.img/night_run.jpg"]
+  },
+  {
+    "title": "快递中心人山人海，取件半小时",
+    "content": "双十一的后果来了！快递中心里外全是人和包裹，找取件码、排队、找货架，一套流程下来花了快半小时。空气不流通，闷热嘈杂。下次绝对要错峰取件，教训深刻。",
+    "spot_id": 47,
+    "score": 2.0,
+    "media_files": ["http://mock.img/express_chaos.jpg"]
+  },
+  {
+    "title": "发现图书馆后门的秘密花园",
+    "content": "从图书馆侧门出来，无意中走到后面的一片小花园。有石凳，有紫藤花架，非常安静，几乎没人。春天这里一定很美。以后学累了可以来这里发呆，像个秘密基地。",
+    "spot_id": 8,
+    "score": 4.3,
+    "media_files": ["http://mock.img/secret_garden.jpg"]
+  },
+  {
+    "title": "通宵自习室实录：灯火通明",
+    "content": "期中考试周，第一次来通宵自习室。半夜两点，座无虚席，只有翻书和键盘声。困了就去接杯咖啡，看看周围努力的同学，又打起精神。黎明时分走出门，天微微亮，成就感混杂着疲惫。",
+    "spot_id": 25,
+    "score": 3.0,
+    "media_files": ["http://mock.img/all_night_room.jpg"]
+  },
+  {
+    "title": "学苑超市的关东煮，冬夜救星",
+    "content": "晚上从实验室回来又冷又饿，学苑超市还亮着灯。买了一杯关东煮，萝卜、魔芋丝、鱼豆腐，热汤咕嘟咕嘟的。站在门口吃完，整个人都暖和过来了。平凡的幸福感。",
+    "spot_id": 38,
+    "score": 4.4,
+    "media_files": ["http://mock.img/oden.jpg"]
+  },
+  {
+    "title": "校史馆参观，感受时光重量",
+    "content": "班级活动组织参观校史馆。看到了很多老照片、旧仪器，还有历任校长的介绍。学校一路走来真不容易，作为其中的一员，忽然有点自豪感。值得每个新生都来看看。",
+    "spot_id": 3,
+    "score": 4.1,
+    "media_files": ["http://mock.img/history_museum1.jpg", "http://mock.img/history_museum2.jpg"]
+  }
+]
