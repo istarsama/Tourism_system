@@ -5,54 +5,219 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>校园智能导游系统</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="extra.css">
 </head>
 <body>
     <div class="container">
+        <!-- ============================
+             左侧控制面板
+             包含：用户信息、导航控制、日记列表
+             ============================ -->
         <div class="sidebar">
             <h1>🎒 校园导游</h1>
             
-            <div class="control-panel">
-                <div class="status-box">
-                    <p>起点: <span id="start-node" class="placeholder">请在地图上点击</span></p>
-                    <p>终点: <span id="end-node" class="placeholder">请在地图上点击</span></p>
+            <!-- 模块 1：用户状态面板 (登录/用户信息) -->
+            <div class="user-panel" id="user-panel">
+                <!-- 未登录状态显示 -->
+                <div id="logged-out-view">
+                    <button class="btn-primary full-width" id="btn-show-login">登录 / 注册</button>
+                </div>
+                <!-- 已登录状态显示 -->
+                <div id="logged-in-view" class="hidden user-info">
+                    <span>欢迎, <b id="current-username">User</b></span>
+                    <button class="btn-sm" id="btn-logout">退出</button>
+                </div>
+            </div>
+
+            <!-- 模块 2：功能标签页切换 (导航 vs 社区) -->
+            <div class="tab-container">
+                <div class="tab active" data-tab="nav">导航</div>
+                <div class="tab" data-tab="diary">社区日记</div>
+            </div>
+
+            <!-- 模块 3：导航功能区 -->
+            <div id="tab-nav" class="tab-content">
+                <div class="control-panel">
+                    <!-- 起终点状态显示 -->
+                    <div class="status-box">
+                        <p>起点: <span id="start-node" class="placeholder">请在地图上点击</span></p>
+                        <p>终点: <span id="end-node" class="placeholder">请在地图上点击</span></p>
+                    </div>
+
+                    <!-- 导航策略选择 -->
+                    <div class="algorithm-select">
+                        <label>导航策略:</label>
+                        <select id="strategy">
+                            <option value="dist">最短距离</option>
+                            <option value="time">最少时间</option>
+                        </select>
+                    </div>
+
+                    <!-- 出行方式选择 -->
+                    <div class="transport-select" style="margin-top: 10px;">
+                        <label>出行方式:</label>
+                        <select id="transport">
+                            <option value="walk">🚶 步行</option>
+                            <option value="bike">🚲 自行车</option>
+                        </select>
+                    </div>
+
+                    <button id="nav-btn" disabled>开始导航</button>
+                    <button id="reset-btn">重置</button>
                 </div>
 
-                <div class="algorithm-select">
-                    <label>导航策略:</label>
-                    <select id="strategy">
-                        <option value="dist">最短距离</option>
-                        <option value="time">最少时间(预留)</option>
+                <!-- 导航结果显示区 -->
+                <div id="result-panel" class="hidden">
+                    <h3>导航结果</h3>
+                    <p>总消耗: <span id="total-cost">-</span></p>
+                    <div class="path-list">
+                        <h4>途径路线:</h4>
+                        <ol id="path-steps">
+                            <!-- JS 动态生成 -->
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- 景点详情面板 (点击地图节点时显示) -->
+                <div class="node-info hidden" id="node-info">
+                    <h3>景点详情</h3>
+                    <h4 id="info-name"></h4>
+                    <p id="info-category"></p>
+                    <p id="info-desc"></p>
+                    <button class="btn-primary full-width" id="btn-view-spot-diaries" style="margin-top: 10px;">查看该景点日记</button>
+                </div>
+            </div>
+
+            <!-- 模块 4：日记浏览区 -->
+            <div id="tab-diary" class="tab-content hidden">
+                <div class="form-group">
+                    <input type="text" id="diary-search-input" placeholder="搜索日记...">
+                    <button class="btn-sm" id="btn-diary-search" style="margin-top: 5px;">搜索</button>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <select id="diary-sort">
+                        <option value="latest">最新发布</option>
+                        <option value="heat">最热 (浏览量)</option>
+                        <option value="score">评分最高</option>
                     </select>
+                    <button class="btn-sm" id="btn-refresh-diaries">刷新</button>
                 </div>
 
-                <button id="nav-btn" disabled>开始导航</button>
-                <button id="reset-btn">重置</button>
-            </div>
-
-            <div id="result-panel" class="hidden">
-                <h3>导航结果</h3>
-                <p>总消耗: <span id="total-cost">-</span></p>
-                <div class="path-list">
-                    <h4>途径路线:</h4>
-                    <ol id="path-steps">
-                        <!-- 动态生成 -->
-                    </ol>
+                <div id="diary-list-container" class="diary-list">
+                    <!-- JS 动态加载日记列表 -->
+                    <div style="text-align: center; color: #999;">加载中...</div>
                 </div>
             </div>
 
-            <div class="node-info hidden" id="node-info">
-                <h3>景点详情</h3>
-                <h4 id="info-name"></h4>
-                <p id="info-category"></p>
-                <p id="info-desc"></p>
-            </div>
         </div>
 
+        <!-- ============================
+             右侧地图区域
+             包含：Canvas 地图、AI 悬浮窗、加载提示
+             ============================ -->
         <div class="map-container">
             <canvas id="mapCanvas"></canvas>
             <div class="loading" id="loading">地图加载中...</div>
+            
+            <!-- 模块 5：AI 智能助手悬浮窗 -->
+            <div class="chat-panel" id="chat-panel">
+                <div class="chat-header" id="chat-header">
+                    <h4>🤖 AI 导游助手</h4>
+                    <span id="chat-toggle">_</span>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message ai">你好！我是校园AI助手，有什么可以帮你的吗？你可以问我关于旅游日记的问题哦。</div>
+                </div>
+                <div class="chat-input-area chat-input">
+                    <input type="text" id="chat-input" placeholder="输入问题...">
+                    <button id="btn-chat-send">发送</button>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- ============================
+         模态框区域 (Modals)
+         默认隐藏，通过 JS 控制显示
+         ============================ -->
+
+    <!-- 弹窗 1：登录/注册 -->
+    <div id="auth-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <h2 id="auth-title">用户登录</h2>
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="auth-username">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="auth-password">
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <button class="btn-primary" id="btn-submit-auth">登录</button>
+                <button class="btn-sm" id="btn-toggle-auth-mode">没有账号? 去注册</button>
+            </div>
+            <button class="btn-sm" style="margin-top: 10px; float: right;" onclick="document.getElementById('auth-modal').classList.add('hidden')">关闭</button>
+        </div>
+    </div>
+
+    <!-- 弹窗 2：写日记 -->
+    <div id="diary-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <h2>写日记</h2>
+            <p>景点: <span id="diary-spot-name"></span></p>
+            <div class="form-group">
+                <label>标题</label>
+                <input type="text" id="diary-title">
+            </div>
+            <div class="form-group">
+                <label>内容</label>
+                <textarea id="diary-content" rows="4"></textarea>
+            </div>
+             <div class="form-group">
+                <label>图片 (可选)</label>
+                <input type="file" id="diary-file">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn-secondary" onclick="document.getElementById('diary-modal').classList.add('hidden')">取消</button>
+                <button class="btn-primary" id="btn-submit-diary">发布</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗 3：日记详情与评论 -->
+    <div id="diary-detail-modal" class="modal-overlay hidden">
+
+        <div class="modal" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <h2 id="detail-title" style="margin-bottom: 5px;">日记标题</h2>
+                <button class="btn-sm" onclick="document.getElementById('diary-detail-modal').classList.add('hidden')">X</button>
+            </div>
+            <div class="diary-meta">
+                 <span>作者: <span id="detail-author"></span></span>
+                 <span>评分: <span id="detail-score"></span></span>
+                 <span>热度: <span id="detail-views"></span></span>
+            </div>
+            <div id="detail-content" style="margin: 15px 0; white-space: pre-wrap;"></div>
+            <div id="detail-images" class="diary-images"></div>
+            
+            <hr>
+            <h3>评论</h3>
+            <div id="detail-comments" style="margin-bottom: 15px;"></div>
+            
+            <div id="comment-form-box" class="form-group hidden">
+                <label>发表评论</label>
+                <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                    打分: <input type="number" id="comment-score" min="1" max="5" value="5" style="width: 60px; margin-left: 5px;">
+                </div>
+                <textarea id="comment-content" rows="2" placeholder="写下你的评论..."></textarea>
+                <button class="btn-primary btn-sm" id="btn-submit-comment" style="margin-top: 5px;">提交评论</button>
+            </div>
+            <div id="comment-login-hint">请登录后发表评论</div>
+        </div>
+    </div>
+
 
     <script src="app.js"></script>
 </body>
