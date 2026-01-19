@@ -1,12 +1,33 @@
-# 🎓 校园旅游与日记分享系统 (Campus Tourism & Diary System)
+<div align="center">
+  <img src="data/xiaohui.jpg" width="120" alt="School Logo" style="border-radius: 50%; box-shadow: 0 4px 8px rgba(0,0,0,0.1);"/>
 
-> **基于 DeepSeek 大模型的个性化旅游导览与社交平台** > _Data Structure Course Design | Powered by FastAPI & DeepSeek V3_
+  <h1>🎓 校园旅游与日记分享系统</h1>
+  <h3>Campus Tourism & Diary System</h3>
+  
+  <p>
+    <b>基于 DeepSeek 大模型的个性化旅游导览与社交平台</b>
+    <br/>
+    <i>Data Structure Course Design | Powered by FastAPI & DeepSeek V3</i>
+  </p>
 
-![Python](https://img.shields.io/badge/Python-3.12%2B-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.109%2B-009688)
-![DeepSeek](https://img.shields.io/badge/AI-DeepSeek%20V3-purple)
-![RAG](https://img.shields.io/badge/Tech-RAG%20Agent-orange)
+  <br/>
+  <img src="data/map.png" width="100%" alt="Project Map" style="border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.2);"/>
+  <br/>
+  <br/>
 
+  <a href="https://www.python.org/">
+    <img src="https://img.shields.io/badge/Python-3.12%2B-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  </a>
+  <a href="https://fastapi.tiangolo.com/">
+    <img src="https://img.shields.io/badge/FastAPI-0.109%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
+  </a>
+  <a href="https://www.deepseek.com/">
+    <img src="https://img.shields.io/badge/AI-DeepSeek%20V3-purple?style=for-the-badge&logo=openai&logoColor=white" alt="DeepSeek">
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/Tech-RAG%20Agent-orange?style=for-the-badge" alt="RAG">
+  </a>
+</div>
 ---
 
 ## 📖 项目简介
