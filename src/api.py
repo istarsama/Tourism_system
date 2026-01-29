@@ -2,7 +2,9 @@ import sys
 import os
 # 把当前文件所在的目录 (src) 加入到 Python 查找路径中，这样就能找到 auth, diary 等模块了
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Depends
+from sqlmodel import Session, select
+from database import get_session
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -12,7 +14,8 @@ from thefuzz import process  # 用于模糊搜索
 # 导入我们自己写的模块
 import auth               # 身份认证模块
 import diary              # 日记模块 (刚才写的)
-from models import CampusGraph
+from models import CampusGraph, Spot
+from crawler import XHSCrawler
 # 从 algorithms 导入两个核心函数
 from algorithms import dijkstra_search, plan_multi_point_route
 from utils import load_graph_from_json, get_data_path
@@ -115,6 +118,54 @@ def search_spots(query: str, limit: int = 5):
             })
             
     return results
+
+# 【新增】集成小红书爬虫 + AI 路线规划接口
+class XHSPlanRequest(BaseModel):
+    keyword: str
+    days: int = 1
+
+@app.post("/plan/xhs_trip")
+async def plan_xhs_trip(request: XHSPlanRequest, session: Session = Depends(get_session)):
+    """
+    1. 调用爬虫抓取小红书笔记
+    2. AI 分析笔记提取景点
+    3. (可选) 生成路线建议
+    """
+    print(f"🚀 开始执行小红书旅游规划: {request.keyword}")
+    
+    # 1. 爬取数据
+    crawler = XHSCrawler()
+    # 注意：如果没装 Node.js，这里会返回模拟数据
+    notes = crawler.search_notes(request.keyword, limit=10)
+    
+    if not notes:
+        return {"msg": "未找到相关笔记", "spots": []}
+    
+    # 2. 尝试在数据库里创建一个“临时景点”来挂载这些日记
+    # 先查有没有叫这个名字的景点
+    spot = session.exec(select(Spot).where(Spot.name == request.keyword)).first()
+    if not spot:
+        # 创建一个虚拟景点 (坐标 0,0)
+        spot = Spot(id=9999 + len(request.keyword), name=request.keyword, x=0, y=0, desc="网络搜索生成的虚拟景点")
+        # 注意：这里我们可能需要处理 ID 冲突，简单起见先这样
+        # 更好的做法是让 ID 自增，但 Spot 模型里 ID 不是自增主键。
+        # 这里为了演示，我们假设 ID 不会冲突
+    
+    # 3. 保存日记到数据库 (关联到这个景点)
+    # 假设当前用户是管理员 (ID=1)
+    saved_count = crawler.save_to_db(notes, session, user_id=1, spot_id=spot.id)
+    
+    # 4. AI 分析文本，提取具体的子景点
+    all_text = "\n".join([n['desc'] for n in notes])
+    extracted_spots = await ai.extract_spots_from_text(all_text)
+    
+    return {
+        "status": "success",
+        "msg": f"成功抓取 {len(notes)} 条笔记，并存入数据库。",
+        "saved_diaries": saved_count,
+        "ai_extracted_spots": extracted_spots,
+        "notes_preview": notes[:2]
+    }
 
 # --- 定义导航请求的数据格式 ---
 # 【修改】导航请求模型

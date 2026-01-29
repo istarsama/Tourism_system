@@ -91,6 +91,38 @@ def search_database_tool(session: Session, keywords_str: str):
     
     return data_text
 
+# 新增：从文本中提取景点的工具
+async def extract_spots_from_text(text: str):
+    """
+    让 AI 从一大段文本中提取出具体的景点名称列表
+    """
+    system_prompt = """
+    你是一个专业的旅游数据分析师。
+    请从用户提供的文本中提取出所有的【旅游景点名称】。
+    
+    要求：
+    1. 只输出景点名称，用 JSON 数组格式返回，例如 ["故宫", "天安门", "长城"]
+    2. 如果没有发现景点，返回 []
+    3. 不要输出任何多余的解释文字，只输出 JSON。
+    """
+    
+    try:
+        response = await client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": text}
+            ],
+            temperature=0.1
+        )
+        content = response.choices[0].message.content
+        # 清理一下可能的 markdown 标记
+        content = content.replace("```json", "").replace("```", "").strip()
+        return json.loads(content)
+    except Exception as e:
+        print(f"❌ AI 提取景点失败: {e}")
+        return []
+
 # 定义联网搜索工具函数
 def search_internet_tool(query: str):
     """

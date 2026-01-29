@@ -126,31 +126,7 @@
 ---
 
 <a id="changelog"></a>
-##  更新日志 (Update Log) - 2026/1/29
-###  2026/1/29 - v2.5 正式版：数据爬虫与智能导入系统
-- **[Feature] 小红书数据爬取 (XHS Crawler)**：
-    - 实现完整的小红书笔记爬取系统，为 RAG 提供真实用户评价数据源。
-    - 集成 `Spider_XHS` 模块，支持关键词搜索并自动导入数据库。
-- **[Algo] 智能景点匹配 (Smart Spot Matching)**：
-    - 采用 **Levenshtein Distance (编辑距离)** 算法实现模糊匹配。
-    - 支持两级策略：精确匹配（包含关系）+ 模糊匹配（相似度>60%）。
-    - 示例："北邮食堂" 自动匹配 "学生食堂"（相似度85%）。
-- **[Data] 数据清洗与去重 (Data Cleaning)**：
-    - 智能长度控制：标题最多400字符，内容最多5000字符。
-    - 标题去重机制：避免重复导入相同笔记。
-    - 完整保留元数据：作者、点赞数、图片、原文链接。
-- **[DB] 数据库升级 (Database Enhancement)**：
-    - 解决字段长度限制问题：`content VARCHAR(255)` → `TEXT` (支持65K字符)。
-    - 升级 `title` 字段：`VARCHAR(255)` → `VARCHAR(500)`。
-    - 新增自动化升级脚本 `upgrade_database.py`。
-- **[Tool] 爬虫工具集 (Crawler Toolkit)**：
-    - 交互式导入：`uv run tools/import_crawled_data.py`（用户友好界面）。
-    - 批量导入：支持多关键词自动化处理。
-    - 统一入口：集成到 `run_tests.py` 主菜单（输入 `c` 启动）。
-- **[Account] 爬虫专用账号 (Bot Account)**：
-    - 创建 `spider_bot` 虚拟账号（ID: 5）统一管理爬取数据。
-    - 所有爬虫日记标题带 `[搬运]` 前缀，便于追溯来源。
-
+##  更新日志 (Update Log) - 2026/1/19
 ###  2026/1/19 - v2.4 正式版：AI Agent 联网与时空感知
 - **[Feature] AI 联网搜索 (Internet Search)**：
     - 集成 **Tavily API**，使 DeepSeek 具备访问实时互联网的能力。
