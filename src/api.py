@@ -3,7 +3,7 @@ import os
 # 把当前文件所在的目录 (src) 加入到 Python 查找路径中，这样就能找到 auth, diary 等模块了
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI, APIRouter, HTTPException, Depends
-from sqlmodel import Session
+from sqlmodel import Session, select
 from database import get_session
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -14,7 +14,8 @@ from thefuzz import process  # 用于模糊搜索
 # 导入我们自己写的模块
 import auth               # 身份认证模块
 import diary              # 日记模块 (刚才写的)
-from models import CampusGraph
+from models import CampusGraph, Spot
+from crawler import XHSCrawler
 # 从 algorithms 导入两个核心函数
 from algorithms import dijkstra_search, plan_multi_point_route
 from utils import load_graph_from_json, get_data_path
