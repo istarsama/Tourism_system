@@ -47,7 +47,9 @@ from sqlmodel import Session, select
 
 # 1. 环境准备 - 添加 src 目录到 Python 路径
 # 原因：需要导入 crawler, database, models 等自定义模块
-src_path = os.path.join(current_dir, "src")
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.join(current_dir, "..")
+src_path = os.path.join(project_root, "src")
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
 

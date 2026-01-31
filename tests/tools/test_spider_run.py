@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 # 1. 确保能导入 src 下的模块
 # 将 src 目录加入到 Python 搜索路径中
 current_dir = os.path.dirname(os.path.abspath(__file__))
-src_path = os.path.join(current_dir, "src")
+project_root = os.path.join(current_dir, "..", "..")
+src_path = os.path.join(project_root, "src")
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
