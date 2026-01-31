@@ -1,6 +1,6 @@
 import os
 import json
-from models import CampusGraph, Spot, Road
+from models import CampusGraph, Spot, Edge
 
 # 引入刚才写的算法
 from algorithms import dijkstra_search
