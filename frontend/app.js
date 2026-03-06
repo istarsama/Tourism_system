@@ -23,6 +23,10 @@ let startNodeId = null;   // 导航起点 ID
 let endNodeId = null;     // 导航终点 ID
 let currentPath = [];     // 当前计算出的路径 (节点 ID 列表)
 let currentSpotId = null; // 当前选中的景点 ID (用于查看详情或写日记)
+let currentSpotScope = 'campus'; // 当前景点范围: campus / national
+let currentNationalSpot = null; // 当前选中的全国景点对象
+let currentMapScope = 'campus'; // 当前地图模式
+let nationalSpots = []; // 全国景点列表（用于前端路线规划）
 
 // --- 用户认证状态 ---
 // 从 LocalStorage 恢复登录状态
@@ -54,6 +58,18 @@ const btnReset = document.getElementById('reset-btn');
 const elLoading = document.getElementById('loading');
 const elResult = document.getElementById('result-panel');
 const elInfo = document.getElementById('node-info');
+const elMapScope = document.getElementById('map-scope');
+const elCampusNavControls = document.getElementById('campus-nav-controls');
+const elNationalNavControls = document.getElementById('national-nav-controls');
+const elNationalCityFilter = document.getElementById('national-city-filter');
+const elNationalTypeFilter = document.getElementById('national-type-filter');
+const btnLoadNationalSpots = document.getElementById('btn-load-national-spots');
+const elNationalStartSelect = document.getElementById('national-start-select');
+const elNationalEndSelect = document.getElementById('national-end-select');
+const elNationalTransport = document.getElementById('national-transport');
+const btnOSMNav = document.getElementById('btn-osm-nav');
+const btnViewNationalSpotDiaries = document.getElementById('btn-view-national-spot-diaries');
+const elNationalRouteSummary = document.getElementById('national-route-summary');
 
 // Auth UI
 const elUserPanel = document.getElementById('user-panel');
@@ -83,6 +99,12 @@ const elDiarySearchInput = document.getElementById('diary-search-input');
 const btnDiarySearch = document.getElementById('btn-diary-search');
 const elDiarySort = document.getElementById('diary-sort');
 const btnRefreshDiaries = document.getElementById('btn-refresh-diaries');
+const elDiaryScope = document.getElementById('diary-scope');
+const elNationalSpotTools = document.getElementById('national-spot-tools');
+const elNationalSpotKeyword = document.getElementById('national-spot-keyword');
+const elNationalSpotCity = document.getElementById('national-spot-city');
+const btnNationalSpotSearch = document.getElementById('btn-national-spot-search');
+const elNationalSpotList = document.getElementById('national-spot-list');
 
 // Diary Modals
 const modalDiary = document.getElementById('diary-modal');
@@ -139,6 +161,156 @@ async function apiCall(endpoint, method = 'GET', body = null, isFile = false) {
     return await res.json();
 }
 
+function setMapScopeUI(scope) {
+    currentMapScope = scope;
+    if (elMapScope && elMapScope.value !== scope) {
+        elMapScope.value = scope;
+    }
+    const isCampus = scope === 'campus';
+    elCampusNavControls.classList.toggle('hidden', !isCampus);
+    elNationalNavControls.classList.toggle('hidden', isCampus);
+
+    if (isCampus) {
+        currentSpotScope = 'campus';
+        elInfo.classList.add('hidden');
+    } else {
+        // 全国模式下不使用校园起终点输入
+        startNodeId = null;
+        endNodeId = null;
+        currentPath = [];
+        btnNav.disabled = true;
+        elStartInput.value = '';
+        elEndInput.value = '';
+        elInfo.classList.add('hidden');
+        render();
+    }
+}
+
+function resetNationalRouteSummary() {
+    if (!elNationalRouteSummary) return;
+    elNationalRouteSummary.innerHTML = '';
+}
+
+function buildNationalSpotOptionLabel(spot) {
+    return `${spot.name}（${spot.city || '未知城市'}）`;
+}
+
+function syncCurrentNationalSpot(spotId) {
+    const id = Number(spotId);
+    const target = nationalSpots.find(s => Number(s.id) === id) || null;
+    currentNationalSpot = target;
+    currentSpotId = target ? target.id : null;
+    currentSpotScope = target ? 'national' : 'campus';
+}
+
+function populateNationalSpotSelects() {
+    const placeholder = '<option value="">请选择景点</option>';
+    elNationalStartSelect.innerHTML = placeholder;
+    elNationalEndSelect.innerHTML = placeholder;
+
+    nationalSpots.forEach(spot => {
+        const label = buildNationalSpotOptionLabel(spot);
+        const opt1 = document.createElement('option');
+        opt1.value = String(spot.id);
+        opt1.innerText = label;
+        elNationalStartSelect.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = String(spot.id);
+        opt2.innerText = label;
+        elNationalEndSelect.appendChild(opt2);
+    });
+
+    if (nationalSpots.length >= 2) {
+        elNationalStartSelect.value = String(nationalSpots[0].id);
+        elNationalEndSelect.value = String(nationalSpots[1].id);
+        syncCurrentNationalSpot(nationalSpots[0].id);
+    } else if (nationalSpots.length === 1) {
+        elNationalStartSelect.value = String(nationalSpots[0].id);
+        elNationalEndSelect.value = String(nationalSpots[0].id);
+        syncCurrentNationalSpot(nationalSpots[0].id);
+    } else {
+        syncCurrentNationalSpot(null);
+    }
+}
+
+async function loadNationalSpotsForNav() {
+    resetNationalRouteSummary();
+    btnLoadNationalSpots.disabled = true;
+    btnLoadNationalSpots.innerText = '加载中...';
+    try {
+        let endpoint = '/map/national-spots?limit=300';
+        const city = elNationalCityFilter.value.trim();
+        const type = elNationalTypeFilter.value.trim();
+        if (city) endpoint += `&city=${encodeURIComponent(city)}`;
+        if (type) endpoint += `&type=${encodeURIComponent(type)}`;
+
+        const spots = await apiCall(endpoint);
+        nationalSpots = spots || [];
+        populateNationalSpotSelects();
+
+        if (!nationalSpots.length) {
+            elNationalRouteSummary.innerHTML = '<span style="color:#ef4444;">未找到符合条件的全国景点</span>';
+        } else {
+            elNationalRouteSummary.innerHTML = `已加载 ${nationalSpots.length} 个全国景点，可直接规划路线`;
+        }
+    } catch (err) {
+        elNationalRouteSummary.innerHTML = `<span style="color:#ef4444;">加载全国景点失败: ${err.message}</span>`;
+    } finally {
+        btnLoadNationalSpots.disabled = false;
+        btnLoadNationalSpots.innerText = '加载全国景点';
+    }
+}
+
+async function runOSMNavigation() {
+    const startId = Number(elNationalStartSelect.value);
+    const endId = Number(elNationalEndSelect.value);
+    if (!startId || !endId) {
+        alert('请先选择起点和终点景点');
+        return;
+    }
+    if (startId === endId) {
+        alert('起点和终点不能相同');
+        return;
+    }
+
+    const transport = elNationalTransport.value || 'walk';
+    btnOSMNav.disabled = true;
+    btnOSMNav.innerText = '规划中...';
+    try {
+        const route = await apiCall('/navigate/osm', 'POST', {
+            start_spot_id: startId,
+            end_spot_id: endId,
+            transport,
+        });
+        const startSpot = nationalSpots.find(s => Number(s.id) === startId);
+        const endSpot = nationalSpots.find(s => Number(s.id) === endId);
+        syncCurrentNationalSpot(startId);
+        elNationalRouteSummary.innerHTML = `
+            <div>🧭 ${startSpot ? startSpot.name : startId} → ${endSpot ? endSpot.name : endId}</div>
+            <div>📏 ${Math.round(route.total_distance_m)} 米 | 🚦 ${transport === 'bike' ? '自行车' : '步行'} | 🧩 节点数 ${route.node_ids.length}</div>
+        `;
+    } catch (err) {
+        elNationalRouteSummary.innerHTML = `<span style="color:#ef4444;">路线规划失败: ${err.message}</span>`;
+    } finally {
+        btnOSMNav.disabled = false;
+        btnOSMNav.innerText = '全国路线规划';
+    }
+}
+
+async function applyMapScope(scope) {
+    try {
+        const mode = await apiCall(`/map/mode?scope=${scope}`);
+        setMapScopeUI(mode.scope || scope);
+    } catch (err) {
+        setMapScopeUI(scope);
+    }
+
+    if (currentMapScope === 'national') {
+        await loadNationalSpotsForNav();
+    }
+}
+
 /**
  * ==================================================================================
  * 模块 4：初始化逻辑
@@ -149,6 +321,7 @@ async function apiCall(endpoint, method = 'GET', body = null, isFile = false) {
 async function init() {
     console.log("App init starting...");
     updateAuthUI(); // 更新登录界面状态
+    toggleNationalSpotTools();
     try {
         console.log("Fetching graph data...");
         // 请求后端获取图结构数据 (节点和边)
@@ -166,6 +339,7 @@ async function init() {
         
         console.log("Initial render...");
         render();         // 绘制地图
+        await applyMapScope(elMapScope ? elMapScope.value : 'campus');
         
         elLoading.style.display = 'none'; // 隐藏加载提示
         
@@ -289,9 +463,42 @@ tabContainer.addEventListener('click', (e) => {
         
         // 如果切到了日记 Tab，自动加载默认日记列表
         if (e.target.dataset.tab === 'diary') {
-            loadDiaries(); 
+            if (currentMapScope === 'national' && currentSpotId) {
+                elDiaryScope.value = 'national';
+                toggleNationalSpotTools();
+                loadDiaries(currentSpotId, 'national');
+            } else {
+                loadDiaries();
+            }
         }
     }
+});
+
+elMapScope.addEventListener('change', async () => {
+    await applyMapScope(elMapScope.value);
+});
+
+btnLoadNationalSpots.addEventListener('click', loadNationalSpotsForNav);
+btnOSMNav.addEventListener('click', runOSMNavigation);
+elNationalStartSelect.addEventListener('change', () => {
+    if (elNationalStartSelect.value) {
+        syncCurrentNationalSpot(elNationalStartSelect.value);
+    }
+});
+btnViewNationalSpotDiaries.addEventListener('click', () => {
+    if (!elNationalStartSelect.value) {
+        alert('请先选择全国景点');
+        return;
+    }
+    syncCurrentNationalSpot(elNationalStartSelect.value);
+    if (!currentSpotId) {
+        alert('当前全国景点无效，请重新加载景点列表');
+        return;
+    }
+    elDiaryScope.value = 'national';
+    toggleNationalSpotTools();
+    document.querySelector('.tab[data-tab="diary"]').click();
+    loadDiaries(currentSpotId, 'national');
 });
 
 /**
@@ -301,23 +508,83 @@ tabContainer.addEventListener('click', (e) => {
  * ==================================================================================
  */
 
-async function loadDiaries(spotId = null) {
+function getDiaryScopeForSearch() {
+    return elDiaryScope ? elDiaryScope.value : 'all';
+}
+
+function toggleNationalSpotTools() {
+    if (!elNationalSpotTools || !elDiaryScope) return;
+    const show = elDiaryScope.value === 'national';
+    elNationalSpotTools.classList.toggle('hidden', !show);
+}
+
+async function searchNationalSpots() {
+    if (!elNationalSpotKeyword || !elNationalSpotList) return;
+    const keyword = elNationalSpotKeyword.value.trim();
+    const city = elNationalSpotCity ? elNationalSpotCity.value.trim() : '';
+    if (!keyword) {
+        alert('请输入全国景点关键词');
+        return;
+    }
+
+    elNationalSpotList.innerHTML = '<div style="text-align:center;color:#999;">查询中...</div>';
+    try {
+        let endpoint = `/spots/search?scope=national&query=${encodeURIComponent(keyword)}&limit=20`;
+        if (city) {
+            endpoint += `&city=${encodeURIComponent(city)}`;
+        }
+        const spots = await apiCall(endpoint);
+        elNationalSpotList.innerHTML = '';
+
+        if (!spots.length) {
+            elNationalSpotList.innerHTML = '<div style="text-align:center;color:#999;">未找到相关全国景点</div>';
+            return;
+        }
+
+        spots.forEach(spot => {
+            const item = document.createElement('div');
+            item.className = 'diary-item';
+            item.innerHTML = `
+                <h4>${spot.name}</h4>
+                <div class="diary-meta">
+                    <span>🏙️ ${spot.city || '未知城市'}</span>
+                    <span>🏷️ ${spot.type || '景点'}</span>
+                </div>
+            `;
+            item.addEventListener('click', () => {
+                currentSpotId = spot.id;
+                currentSpotScope = 'national';
+                currentNationalSpot = spot;
+                elDiarySearchInput.value = '';
+                loadDiaries(currentSpotId, 'national');
+            });
+            elNationalSpotList.appendChild(item);
+        });
+    } catch (err) {
+        elNationalSpotList.innerHTML = '<div style="text-align:center;color:#ef4444;">全国景点查询失败</div>';
+        console.error(err);
+    }
+}
+
+async function loadDiaries(spotId = null, spotScope = null) {
     elDiaryList.innerHTML = '<div style="text-align: center; color: #999;">加载中...</div>';
     const sort = elDiarySort.value;
+    const searchScope = getDiaryScopeForSearch();
     
     try {
         let endpoint = '';
         if (spotId) {
              // 场景 1: 获取特定景点的日记
-             endpoint = `/diaries/spot/${spotId}?sort_by=${sort}`;
+             const scoped = spotScope || currentSpotScope || 'campus';
+             endpoint = `/diaries/spot/${spotId}?sort_by=${sort}&scope=${scoped}`;
         } else {
              // 场景 2: 全局搜索或浏览
              const keyword = elDiarySearchInput.value.trim();
              if (keyword) {
-                 endpoint = `/diaries/search?keyword=${encodeURIComponent(keyword)}&sort_by=${sort}`;
-             } else {
-                 endpoint = `/diaries/search?sort_by=${sort}`; // 默认推荐列表
-             }
+                 endpoint = `/diaries/search?keyword=${encodeURIComponent(keyword)}&sort_by=${sort}&scope=${searchScope}`;
+              } else {
+                 endpoint = `/diaries/search?sort_by=${sort}&scope=${searchScope}`; // 默认推荐列表
+              }
         }
         
         const diaries = await apiCall(endpoint);
@@ -349,6 +616,7 @@ function renderDiaries(list) {
             <div class="diary-meta">
                 <span>👤 ${diary.user_name}</span>
                 <span>🔥 ${diary.view_count} | ⭐ ${diary.score}</span>
+                <span>🧭 ${diary.scope === 'national' ? '全国' : '校园'}</span>
                 <span>📅 ${date}</span>
             </div>
         `;
@@ -361,6 +629,17 @@ function renderDiaries(list) {
 btnDiarySearch.addEventListener('click', () => loadDiaries(null));
 elDiarySort.addEventListener('change', () => loadDiaries(null)); // 注意: 这会重置景点筛选
 btnRefreshDiaries.addEventListener('click', () => loadDiaries(null));
+elDiaryScope.addEventListener('change', () => {
+    if (elDiaryScope.value !== 'national') {
+        currentNationalSpot = null;
+    }
+    toggleNationalSpotTools();
+    loadDiaries(null);
+});
+btnNationalSpotSearch.addEventListener('click', searchNationalSpots);
+elNationalSpotKeyword.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') searchNationalSpots();
+});
 
 // “查看该景点日记”按钮事件 (通常在地图选中景点后出现)
 btnViewSpotDiaries.addEventListener('click', () => {
@@ -368,13 +647,24 @@ btnViewSpotDiaries.addEventListener('click', () => {
     document.querySelector('.tab[data-tab="diary"]').click();
     // 清空搜索框
     elDiarySearchInput.value = '';
+    if (currentMapScope === 'national' && !currentSpotId && elNationalStartSelect.value) {
+        syncCurrentNationalSpot(elNationalStartSelect.value);
+    }
     if (currentSpotId) {
-        loadDiaries(currentSpotId);
+        if (currentSpotScope === 'national') {
+            elDiaryScope.value = 'national';
+            toggleNationalSpotTools();
+        }
+        loadDiaries(currentSpotId, currentSpotScope);
         // 在列表顶部添加一个“写日记”的快捷入口
         const div = document.createElement('div');
         div.style.marginBottom = '10px';
         div.innerHTML = `<button class="btn-primary full-width" onclick="openCreateDiaryModal()">✍️ 在此写一篇日记</button>`;
         elDiaryList.prepend(div); 
+    } else if (currentMapScope === 'national' || elDiaryScope.value === 'national') {
+        alert('请先在“全国景点查询”中选中一个景点');
+    } else {
+        alert('请先在地图上选择一个校园景点');
     }
 });
 
@@ -386,11 +676,16 @@ window.openCreateDiaryModal = function() {
         btnShowLogin.click();
         return;
     }
-    if (!currentSpotId) return alert("请先在地图上选择一个景点");
-    
-    const node = nodeMap[currentSpotId];
-    // 预填充景点名称
-    document.getElementById('diary-spot-name').innerText = node.name;
+    if (!currentSpotId) return alert("请先选择一个景点");
+
+    if (currentSpotScope === 'campus') {
+        const node = nodeMap[currentSpotId];
+        if (!node) return alert("当前校园景点不存在，请重新选择");
+        document.getElementById('diary-spot-name').innerText = `${node.name}（校园）`;
+    } else {
+        if (!currentNationalSpot) return alert("请先从全国景点列表中选择景点");
+        document.getElementById('diary-spot-name').innerText = `${currentNationalSpot.name}（全国）`;
+    }
     document.getElementById('diary-title').value = '';
     document.getElementById('diary-content').value = '';
     document.getElementById('diary-file').value = '';
@@ -421,16 +716,22 @@ btnSubmitDiary.addEventListener('click', async () => {
         }
         
         // 创建日记记录
-        await apiCall('/diaries/', 'POST', {
-            spot_id: currentSpotId,
+        const payload = {
+            scope: currentSpotScope,
             title,
             content,
             media_files: mediaFiles
-        });
+        };
+        if (currentSpotScope === 'campus') {
+            payload.spot_id = currentSpotId;
+        } else {
+            payload.national_spot_id = currentSpotId;
+        }
+        await apiCall('/diaries/', 'POST', payload);
         
         alert("发布成功！");
         modalDiary.classList.add('hidden');
-        loadDiaries(currentSpotId); // 刷新列表
+        loadDiaries(currentSpotId, currentSpotScope); // 刷新列表
         
     } catch(err) {
         alert("发布失败: " + err.message);
@@ -676,7 +977,12 @@ function addMessage(text, role, isHTML = false) {
  */
 
 function handleNodeClick(node) {
+    if (currentMapScope !== 'campus') {
+        return;
+    }
     currentSpotId = node.id;
+    currentSpotScope = 'campus';
+    currentNationalSpot = null;
     
     // 显示右侧信息面板内容
     document.getElementById('info-name').innerText = node.name;
@@ -844,6 +1150,9 @@ canvas.addEventListener('mouseup', e => {
 });
 
 function handleCanvasClick(e) {
+    if (currentMapScope !== 'campus') {
+        return;
+    }
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -897,6 +1206,20 @@ let pathAnim = {
 };
 
 function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (currentMapScope === 'national') {
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#1f2937';
+        ctx.font = '18px Arial';
+        ctx.fillText('全国景点模式', 30, 50);
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#4b5563';
+        ctx.fillText('请在左侧选择全国景点并规划 OSM 路线，或查看该景点日记。', 30, 85);
+        return;
+    }
+
     // 渲染背景
     if (mapBgImage.complete && mapBgImage.naturalWidth > 0) {
         // 绘制图片背景
@@ -1066,6 +1389,9 @@ btnReset.addEventListener('click', () => {
     endNodeId = null;
     currentPath = [];
     currentSpotId = null;
+    currentSpotScope = 'campus';
+    currentNationalSpot = null;
+    elNationalRouteSummary.innerHTML = '';
     
     // 停止动画
     pathAnim.active = false;
@@ -1074,6 +1400,8 @@ btnReset.addEventListener('click', () => {
     // 重置 UI
     elStartInput.value = '';
     elEndInput.value = '';
+    if (elNationalStartSelect) elNationalStartSelect.value = '';
+    if (elNationalEndSelect) elNationalEndSelect.value = '';
     
     btnNav.disabled = true;
     elResult.classList.add('hidden');
@@ -1084,6 +1412,7 @@ btnReset.addEventListener('click', () => {
 
 // 开始导航按钮逻辑
 btnNav.addEventListener('click', async () => {
+    if (currentMapScope !== 'campus') return;
     if (startNodeId === null || endNodeId === null) return;
     const strategy = document.getElementById('strategy').value;
     const transport = document.getElementById('transport').value; // 获取出行方式

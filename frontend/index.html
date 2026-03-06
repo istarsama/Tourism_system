@@ -51,6 +51,15 @@
 
             <!-- 模块 3：导航功能区 -->
             <div id="tab-nav" class="tab-content">
+                <div class="form-group">
+                    <label>地图模式</label>
+                    <select id="map-scope">
+                        <option value="campus">校园导览</option>
+                        <option value="national">全国景点</option>
+                    </select>
+                </div>
+
+                <div id="campus-nav-controls">
                 <div class="control-panel">
                     <!-- 起终点状态显示 -->
                     <div class="status-box">
@@ -91,6 +100,43 @@
                     <button id="nav-btn" disabled>开始导航</button>
                     <button id="reset-btn">重置</button>
                 </div>
+                </div>
+
+                <div id="national-nav-controls" class="control-panel hidden">
+                    <div class="form-group">
+                        <label>城市过滤（可选）</label>
+                        <input type="text" id="national-city-filter" placeholder="例如：北京">
+                    </div>
+                    <div class="form-group">
+                        <label>类型过滤（可选）</label>
+                        <input type="text" id="national-type-filter" placeholder="例如：历史遗迹">
+                    </div>
+                    <button id="btn-load-national-spots">加载全国景点</button>
+
+                    <div class="form-group">
+                        <label>起点景点</label>
+                        <select id="national-start-select">
+                            <option value="">请先加载景点</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>终点景点</label>
+                        <select id="national-end-select">
+                            <option value="">请先加载景点</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>出行方式</label>
+                        <select id="national-transport">
+                            <option value="walk">🚶 步行</option>
+                            <option value="bike">🚲 自行车</option>
+                        </select>
+                    </div>
+
+                    <button id="btn-osm-nav">全国路线规划</button>
+                    <button id="btn-view-national-spot-diaries" class="btn-secondary">查看所选景点日记</button>
+                    <div id="national-route-summary" style="font-size: 13px; color: #4b5563;"></div>
+                </div>
 
                 <!-- 导航结果显示区 -->
                 <div id="result-panel" class="hidden">
@@ -119,6 +165,26 @@
                 <div class="form-group">
                     <input type="text" id="diary-search-input" placeholder="搜索日记...">
                     <button class="btn-sm" id="btn-diary-search" style="margin-top: 5px;">搜索</button>
+                </div>
+
+                <div class="form-group" style="margin-top: -5px;">
+                    <label>日记范围</label>
+                    <select id="diary-scope">
+                        <option value="all">全部</option>
+                        <option value="campus">校园</option>
+                        <option value="national">全国</option>
+                    </select>
+                </div>
+
+                <div id="national-spot-tools" class="hidden" style="margin-bottom: 10px;">
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <input type="text" id="national-spot-keyword" placeholder="搜索全国景点（如：故宫）">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <input type="text" id="national-spot-city" placeholder="城市过滤（可选，如：北京）">
+                    </div>
+                    <button class="btn-sm full-width" id="btn-national-spot-search">查找全国景点</button>
+                    <div id="national-spot-list" class="diary-list" style="margin-top: 8px; max-height: 180px; overflow-y: auto;"></div>
                 </div>
                 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
