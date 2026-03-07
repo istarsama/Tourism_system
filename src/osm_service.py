@@ -1,11 +1,22 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Any
+from typing import TypedDict
 
 import networkx as nx
 import osmnx as ox
 from loguru import logger
+
+
+class OSMRoutePlanResult(TypedDict):
+    city: str
+    transport: str
+    node_ids: list[int]
+    path_coords: list[list[float]]
+    total_distance_m: float
+    segment_count: int
+    segment_distances_m: list[float]
+    estimated_duration_s: float
 
 
 class OSMService:
@@ -54,6 +65,13 @@ class OSMService:
             raise ValueError("路网节点缺少坐标，无法定位最近节点")
         return best_node
 
+    def _estimate_duration_seconds(self, total_distance_m: float, transport: str) -> float:
+        self._to_network_type(transport)
+        speed_mps = 1.4 if transport == "walk" else 4.0
+        if total_distance_m <= 0:
+            return 0.0
+        return total_distance_m / speed_mps
+
     def route_planning(
         self,
         city: str,
@@ -62,7 +80,7 @@ class OSMService:
         end_lat: float,
         end_lng: float,
         transport: str = "walk",
-    ) -> dict[str, Any]:
+    ) -> OSMRoutePlanResult:
         graph = self.get_city_graph(city, transport)
         start_node = self._nearest_node(graph, start_lng, start_lat)
         end_node = self._nearest_node(graph, end_lng, end_lat)
@@ -75,11 +93,13 @@ class OSMService:
             raise ValueError("无法在路网中定位起点或终点") from exc
 
         total_distance_m = 0.0
+        segment_distances_m: list[float] = []
         for u, v in zip(node_ids[:-1], node_ids[1:]):
+            segment_length = 0.0
             edge_bundle = graph.get_edge_data(u, v)
-            if not edge_bundle:
-                continue
-            segment_length = min(float(edge.get("length", 0.0)) for edge in edge_bundle.values())
+            if edge_bundle:
+                segment_length = min(float(edge.get("length", 0.0)) for edge in edge_bundle.values())
+            segment_distances_m.append(round(segment_length, 2))
             total_distance_m += segment_length
 
         path_coords: list[list[float]] = []
@@ -91,10 +111,16 @@ class OSMService:
                 raise ValueError("路径节点缺少经纬度坐标")
             path_coords.append([float(lat), float(lng)])
 
+        total_distance_m_rounded = round(total_distance_m, 2)
         return {
             "city": city,
             "transport": transport,
             "node_ids": [int(nid) for nid in node_ids],
             "path_coords": path_coords,
-            "total_distance_m": round(total_distance_m, 2),
+            "total_distance_m": total_distance_m_rounded,
+            "segment_count": len(segment_distances_m),
+            "segment_distances_m": segment_distances_m,
+            "estimated_duration_s": round(
+                self._estimate_duration_seconds(total_distance_m, transport), 2
+            ),
         }

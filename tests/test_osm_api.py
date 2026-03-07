@@ -81,6 +81,9 @@ def main():
                 "node_ids": [101, 102, 103],
                 "path_coords": [[39.91, 116.39], [39.95, 116.34], [40.00, 116.27]],
                 "total_distance_m": 12800.5,
+                "segment_count": 2,
+                "segment_distances_m": [5200.25, 7600.25],
+                "estimated_duration_s": 9143.21,
             }
 
         api.osm_service.route_planning = fake_route_planning
@@ -98,7 +101,24 @@ def main():
             assert ok_data["start_spot_id"] == start_id
             assert ok_data["end_spot_id"] == end_id
             assert ok_data["city"] == "北京"
+            assert ok_data["transport"] == "walk"
             assert ok_data["node_ids"] == [101, 102, 103]
+            assert ok_data["path_coords"] == [[39.91, 116.39], [39.95, 116.34], [40.0, 116.27]]
+            assert ok_data["total_distance_m"] == 12800.5
+            assert ok_data["segment_count"] == 2
+            assert ok_data["segment_distances_m"] == [5200.25, 7600.25]
+            assert ok_data["estimated_duration_s"] == 9143.21
+
+            required_compat_fields = {
+                "city",
+                "transport",
+                "start_spot_id",
+                "end_spot_id",
+                "node_ids",
+                "path_coords",
+                "total_distance_m",
+            }
+            assert required_compat_fields.issubset(set(ok_data.keys()))
 
             invalid_transport_resp = client.post(
                 "/navigate/osm",

@@ -391,6 +391,9 @@ class OSMNavigateResponse(BaseModel):
     node_ids: List[int]
     path_coords: List[List[float]]
     total_distance_m: float
+    segment_count: int
+    segment_distances_m: List[float]
+    estimated_duration_s: float
 
 # --- 根目录测试 ---
 @app.get("/")
@@ -546,6 +549,9 @@ def navigate_osm(request: OSMNavigateRequest, session: Session = Depends(get_ses
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    segment_distances_m = [float(distance) for distance in result.get("segment_distances_m", [])]
+    segment_count = int(result.get("segment_count", len(segment_distances_m)))
+    estimated_duration_s = float(result.get("estimated_duration_s", 0.0))
     response = {
         "city": result["city"],
         "transport": result["transport"],
@@ -554,13 +560,18 @@ def navigate_osm(request: OSMNavigateRequest, session: Session = Depends(get_ses
         "node_ids": result["node_ids"],
         "path_coords": result["path_coords"],
         "total_distance_m": result["total_distance_m"],
+        "segment_count": segment_count,
+        "segment_distances_m": segment_distances_m,
+        "estimated_duration_s": estimated_duration_s,
     }
     elapsed_ms = (perf_counter() - started_at) * 1000
     logger.info(
-        "OSM 导航完成 city={} nodes={} distance={}m elapsed_ms={:.2f}",
+        "OSM 导航完成 city={} nodes={} segments={} distance={}m eta={}s elapsed_ms={:.2f}",
         response["city"],
         len(response["node_ids"]),
+        response["segment_count"],
         response["total_distance_m"],
+        response["estimated_duration_s"],
         elapsed_ms,
     )
     return response
