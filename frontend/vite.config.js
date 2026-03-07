@@ -34,6 +34,21 @@ export default defineConfig({
       '/navigate': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true
+<<<<<<< HEAD
+=======
+      },
+      '/uploads': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true
+      },
+      '/data': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true
+      },
+      '/plan': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
       }
     }
   },

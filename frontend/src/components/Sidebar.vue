@@ -30,13 +30,18 @@
           <UserPanel />
         </div>
 
+<<<<<<< HEAD
         <!-- Tab 切换 - 现代药丸风格（使用 router-link） -->
+=======
+        <!-- Tab 切换 - 现代药丸风格 -->
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
         <div class="px-4 pt-4">
           <div class="relative bg-gray-100/70 backdrop-blur-sm rounded-xl p-1 flex gap-1">
             <!-- 滑动背景 -->
             <div 
               class="absolute top-1 bottom-1 bg-white rounded-lg shadow-md transition-all duration-300 ease-out"
               :style="{ 
+<<<<<<< HEAD
                 left: currentRoute === '/nav' ? '4px' : '50%',
                 right: currentRoute === '/diary' ? '4px' : '50%'
               }"
@@ -46,22 +51,43 @@
               to="/nav"
               class="relative z-10 flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition-all duration-200 active:scale-95"
               :class="currentRoute === '/nav' ? 'text-bupt-blue' : 'text-gray-600 hover:text-gray-900'"
+=======
+                left: activeTab === 'nav' ? '4px' : '50%',
+                right: activeTab === 'diary' ? '4px' : '50%'
+              }"
+            ></div>
+            
+            <button 
+              @click="activeTab = 'nav'"
+              class="relative z-10 flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition-all duration-200 active:scale-95"
+              :class="activeTab === 'nav' ? 'text-bupt-blue' : 'text-gray-600 hover:text-gray-900'"
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
             >
               <div class="flex items-center justify-center gap-2">
                 <Navigation :size="16" />
                 <span>导航</span>
               </div>
+<<<<<<< HEAD
             </router-link>
             
             <router-link
               to="/diary"
               class="relative z-10 flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition-all duration-200 active:scale-95"
               :class="currentRoute === '/diary' ? 'text-bupt-blue' : 'text-gray-600 hover:text-gray-900'"
+=======
+            </button>
+            
+            <button 
+              @click="activeTab = 'diary'"
+              class="relative z-10 flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition-all duration-200 active:scale-95"
+              :class="activeTab === 'diary' ? 'text-bupt-blue' : 'text-gray-600 hover:text-gray-900'"
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
             >
               <div class="flex items-center justify-center gap-2">
                 <BookOpen :size="16" />
                 <span>社区日记</span>
               </div>
+<<<<<<< HEAD
             </router-link>
           </div>
         </div>
@@ -75,6 +101,22 @@
                 @view-spot-diaries="handleViewSpotDiaries"
                 @clear-spot-filter="handleClearSpotFilter"
               />
+=======
+            </button>
+          </div>
+        </div>
+
+        <!-- 内容区域 - 带过渡动画 -->
+        <div class="flex-1 overflow-hidden px-4 py-4">
+          <div class="h-full overflow-y-auto custom-scrollbar">
+            <Transition name="tab-fade" mode="out-in">
+              <div v-if="activeTab === 'nav'" key="nav">
+                <NavigationPanel @view-spot-diaries="handleViewSpotDiaries" />
+              </div>
+              <div v-else key="diary">
+                <DiaryPanel :spot-id="selectedSpotId" @clear-spot-filter="handleClearSpotFilter" />
+              </div>
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
             </Transition>
           </div>
         </div>
@@ -95,6 +137,7 @@
 </template>
 
 <script setup>
+<<<<<<< HEAD
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Menu, Navigation, BookOpen } from 'lucide-vue-next'
@@ -109,10 +152,23 @@ const selectedSpotId = ref(null)
 // 计算当前路由路径
 const currentRoute = computed(() => route.path)
 
+=======
+import { ref } from 'vue'
+import { Menu, Navigation, BookOpen } from 'lucide-vue-next'
+import UserPanel from './UserPanel.vue'
+import NavigationPanel from './NavigationPanel.vue'
+import DiaryPanel from './DiaryPanel.vue'
+
+const isOpen = ref(true)
+const activeTab = ref('nav')
+const selectedSpotId = ref(null)
+
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
 function toggleSidebar() {
   isOpen.value = !isOpen.value
 }
 
+<<<<<<< HEAD
 /**
  * 处理从景点查看日记的跳转
  * @param {number} spotId - 景点ID
@@ -133,6 +189,15 @@ function handleClearSpotFilter() {
   selectedSpotId.value = null
   // 清除查询参数
   router.push({ path: '/diary' })
+=======
+function handleViewSpotDiaries(spotId) {
+  selectedSpotId.value = spotId
+  activeTab.value = 'diary'
+}
+
+function handleClearSpotFilter() {
+  selectedSpotId.value = null
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
 }
 </script>
 

@@ -178,12 +178,20 @@
           <div>
             <h4 class="text-lg font-bold text-gray-900 mb-1">{{ mapStore.selectedSpot.name }}</h4>
             <span class="inline-block px-2.5 py-1 bg-mint-green/10 text-mint-green text-xs font-semibold rounded-full">
+<<<<<<< HEAD
               {{ mapStore.selectedSpot.category }}
+=======
+              {{ mapStore.selectedSpot.type || mapStore.selectedSpot.category || '景点' }}
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
             </span>
           </div>
           
           <p class="text-sm text-gray-700 leading-relaxed bg-white/50 rounded-lg p-3">
+<<<<<<< HEAD
             {{ mapStore.selectedSpot.description }}
+=======
+            {{ mapStore.selectedSpot.desc || mapStore.selectedSpot.description || '暂无介绍' }}
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
           </p>
           
           <button 
@@ -224,11 +232,27 @@ const isNavigating = ref(false)
 defineEmits(['view-spot-diaries'])
 
 function handleSelectStart(spot) {
+<<<<<<< HEAD
+=======
+  if (!spot) {
+    mapStore.setStart(null)
+    startSearch.value = ''
+    return
+  }
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
   mapStore.setStart(spot)
   startSearch.value = spot.name
 }
 
 function handleSelectEnd(spot) {
+<<<<<<< HEAD
+=======
+  if (!spot) {
+    mapStore.setEnd(null)
+    endSearch.value = ''
+    return
+  }
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
   mapStore.setEnd(spot)
   endSearch.value = spot.name
 }

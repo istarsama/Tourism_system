@@ -1,6 +1,7 @@
 <!--
   Vue 3 根组件
   应用的主要布局组件，包含侧边栏、地图区域、聊天面板
+<<<<<<< HEAD
   
   架构设计：
   - MapCanvas 在 router-view 之外，确保地图组件不会因路由切换而重新挂载
@@ -10,15 +11,26 @@
 <template>
   <div class="app-container">
     <!-- 左侧侧边栏：包含路由视图（导航/日记/用户面板） -->
+=======
+-->
+<template>
+  <div class="app-container">
+    <!-- 左侧侧边栏：包含导航面板、日记面板、用户信息 -->
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
     <Sidebar />
 
     <!-- 右侧地图区域：地图画布 + AI聊天面板 -->
     <div class="map-area">
+<<<<<<< HEAD
       <!-- 地图画布：显示校园地图、景点、导航路径（持久化组件，不会卸载） -->
+=======
+      <!-- 地图画布：显示校园地图、景点、导航路径 -->
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
       <MapCanvas />
       <!-- AI聊天面板：智能导游助手 -->
       <ChatPanel />
     </div>
+<<<<<<< HEAD
 
     <!-- 全局模态框：通过路由参数控制显示 -->
     <!-- 日记详情模态框 -->
@@ -29,10 +41,13 @@
 
     <!-- 登录模态框 -->
     <AuthModal v-model:show="showLogin" />
+=======
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
   </div>
 </template>
 
 <script setup>
+<<<<<<< HEAD
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Sidebar from './components/Sidebar.vue'
@@ -40,10 +55,17 @@ import MapCanvas from './components/MapCanvas.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import DiaryDetailModal from './components/DiaryDetailModal.vue'
 import AuthModal from './components/AuthModal.vue'
+=======
+import { onMounted } from 'vue'
+import Sidebar from './components/Sidebar.vue'
+import MapCanvas from './components/MapCanvas.vue'
+import ChatPanel from './components/ChatPanel.vue'
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
 import { useMapStore } from './stores/map'
 
 // 获取地图状态管理实例
 const mapStore = useMapStore()
+<<<<<<< HEAD
 const route = useRoute()
 const router = useRouter()
 
@@ -107,6 +129,14 @@ onMounted(() => {
   if (route.query.login === 'true') {
     showLogin.value = true
   }
+=======
+
+// 组件挂载后初始化
+onMounted(() => {
+  // 应用启动时立即加载地图图数据
+  // 包括节点（景点）、边（路径）信息
+  mapStore.loadGraph()
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
 })
 </script>
 

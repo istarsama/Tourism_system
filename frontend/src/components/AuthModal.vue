@@ -1,5 +1,8 @@
 <template>
+<<<<<<< HEAD
   <!-- 始终使用 Teleport 模态框模式 -->
+=======
+>>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
   <Teleport to="body">
     <Transition name="fade">
       <div v-if="show" class="modal-overlay" @click="handleOverlayClick">
