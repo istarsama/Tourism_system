@@ -579,4 +579,9 @@ def navigate_osm(request: OSMNavigateRequest, session: Session = Depends(get_ses
 # 【重要】前端静态文件挂载 - 必须放在所有 API 路由之后
 # 这样 API 路由优先匹配，未匹配的请求才会走静态文件
 # ==========================================
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+frontend_dist_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend-dist")
+if os.path.isdir(frontend_dist_dir):
+    app.mount("/", StaticFiles(directory=frontend_dist_dir, html=True), name="frontend")
+    logger.info("✅ 已挂载前端构建产物目录: {}", frontend_dist_dir)
+else:
+    logger.warning("⚠️ 未找到 frontend-dist，当前使用前后端分离开发模式（请运行 frontend\\npm run dev）")

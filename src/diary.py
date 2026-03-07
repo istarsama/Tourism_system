@@ -39,6 +39,7 @@ class CommentCreate(BaseModel):
 
 # 🆕 新增：返回给前端看的评论格式
 class CommentRead(BaseModel):
+    id: int
     user_name: str  # 评论者名字
     content: str    # 评论内容
     score: float    # 打分
@@ -223,6 +224,7 @@ def get_diary_comments(diary_id: int, session: Session = Depends(get_session)):
         
         # 组装返回数据
         result.append(CommentRead(
+            id=c.id,
             user_name=user_name,
             content=c.content,
             score=c.score,
