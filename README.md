@@ -88,17 +88,21 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **基础** | `GET` | `/` | 无需 | 服务状态 |
 | **地图** | `GET` | `/graph` | 无需 | 地图节点与边数据 |
+|  | `GET` | `/map/campus-graph` | 无需 | 兼容版校园地图数据接口（同 `/graph`） |
+|  | `GET` | `/map/mode?scope=campus\|national` | 无需 | 返回地图模式配置（中心点、缩放、数据源） |
+|  | `GET` | `/map/national-spots` | 无需 | 全国景点列表，支持 `city` / `type` 过滤，返回 `diary_count`/`diary_api` |
 |  | `GET` | `/spots/list` | 无需 | 获取所有景点（下拉框） |
-|  | `GET` | `/spots/search` | 无需 | 景点模糊搜索 |
+|  | `GET` | `/spots/search` | 无需 | 景点模糊搜索（支持 `scope=campus|national`） |
 | **导航** | `POST` | `/navigate` | 无需 | 单点/多点路线规划，返回 `path_coords` |
+|  | `POST` | `/navigate/osm` | 无需 | 全国景点同城 OSM 导航（`start_spot_id`/`end_spot_id`） |
 | **认证** | `POST` | `/auth/register` | 无需 | 用户注册 |
 |  | `POST` | `/auth/login` | 无需 | 用户登录，返回 Bearer Token |
-| **日记管理** | `POST` | `/diaries/` | 需要 | 发布日记（含媒体链接列表） |
+| **日记管理** | `POST` | `/diaries/` | 需要 | 发布日记（支持 `scope=campus|national`） |
 |  | `POST` | `/diaries/comment` | 需要 | 发表评论并更新平均分 |
 |  | `GET` | `/diaries/detail/{diary_id}` | 无需 | 获取详情（浏览量 +1） |
 |  | `GET` | `/diaries/{diary_id}/comments` | 无需 | 获取评论列表 |
-|  | `GET` | `/diaries/spot/{spot_id}` | 无需 | 获取景点日记列表（支持排序） |
-|  | `GET` | `/diaries/search` | 无需 | 全站搜索与排序推荐 |
+|  | `GET` | `/diaries/spot/{spot_id}` | 无需 | 获取景点日记列表（支持 `scope` + 排序） |
+|  | `GET` | `/diaries/search` | 无需 | 全站搜索与排序推荐（支持 `scope` 过滤） |
 | **AI 智能** | `POST` | `/ai/rag_chat` | 无需 | 问答：本地库 RAG + Tavily 联网搜索路由 |
 |  | `POST` | `/ai/polish` | 无需 | 日记润色 |
 | **文件服务** | `POST` | `/upload` | 无需 | 上传图片/视频（返回静态 URL） |
@@ -126,7 +130,31 @@
 ---
 
 <a id="changelog"></a>
-##  更新日志 (Update Log) - 2026/1/19
+##  更新日志 (Update Log) - 2026/1/29
+###  2026/1/29 - v2.5 正式版：数据爬虫与智能导入系统
+- **[Feature] 小红书数据爬取 (XHS Crawler)**：
+    - 实现完整的小红书笔记爬取系统，为 RAG 提供真实用户评价数据源。
+    - 集成 `Spider_XHS` 模块，支持关键词搜索并自动导入数据库。
+- **[Algo] 智能景点匹配 (Smart Spot Matching)**：
+    - 采用 **Levenshtein Distance (编辑距离)** 算法实现模糊匹配。
+    - 支持两级策略：精确匹配（包含关系）+ 模糊匹配（相似度>60%）。
+    - 示例："北邮食堂" 自动匹配 "学生食堂"（相似度85%）。
+- **[Data] 数据清洗与去重 (Data Cleaning)**：
+    - 智能长度控制：标题最多400字符，内容最多5000字符。
+    - 标题去重机制：避免重复导入相同笔记。
+    - 完整保留元数据：作者、点赞数、图片、原文链接。
+- **[DB] 数据库升级 (Database Enhancement)**：
+    - 解决字段长度限制问题：`content VARCHAR(255)` → `TEXT` (支持65K字符)。
+    - 升级 `title` 字段：`VARCHAR(255)` → `VARCHAR(500)`。
+    - 新增自动化升级脚本 `upgrade_database.py`。
+- **[Tool] 爬虫工具集 (Crawler Toolkit)**：
+    - 交互式导入：`uv run tools/import_crawled_data.py`（用户友好界面）。
+    - 批量导入：支持多关键词自动化处理。
+    - 统一入口：集成到 `run_tests.py` 主菜单（输入 `c` 启动）。
+- **[Account] 爬虫专用账号 (Bot Account)**：
+    - 创建 `spider_bot` 虚拟账号（ID: 5）统一管理爬取数据。
+    - 所有爬虫日记标题带 `[搬运]` 前缀，便于追溯来源。
+
 ###  2026/1/19 - v2.4 正式版：AI Agent 联网与时空感知
 - **[Feature] AI 联网搜索 (Internet Search)**：
     - 集成 **Tavily API**，使 DeepSeek 具备访问实时互联网的能力。
@@ -177,4 +205,4 @@
 
 ---
 
-> **快速开始**: 请确保在 `src/ai.py` 中填入有效的 DeepSeek API Key，并运行 `uv run uvicorn src.api:app --reload` 启动服务。
+> **快速开始**: 请确保在 `.env` 中配置有效的 `DEEPSEEK_API_KEY`，并按需配置 `DATABASE_URL`（默认 `mysql+pymysql://root:root@127.0.0.1:3306/campus_nav`），然后运行 `uv run uvicorn src.api:app --reload` 启动服务。若需初始化全国景点数据，可执行 `uv run tools/init_national_spots.py`。

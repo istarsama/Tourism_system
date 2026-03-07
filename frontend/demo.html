@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 聊天界面演示</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .demo-container {
+      max-width: 1200px;
+      width: 100%;
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      color: #667eea;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 40px;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .feature-card {
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .feature-card h3 {
+      color: #667eea;
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+
+    .feature-card p {
+      color: #555;
+      line-height: 1.6;
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .demo-section {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+
+    .demo-section h2 {
+      color: #333;
+      margin-top: 0;
+      margin-bottom: 20px;
+      border-left: 4px solid #667eea;
+      padding-left: 16px;
+    }
+
+    .code-block {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .keyword {
+      color: #c792ea;
+    }
+
+    .string {
+      color: #c3e88d;
+    }
+
+    .function {
+      color: #82aaff;
+    }
+
+    .comment {
+      color: #676e95;
+      font-style: italic;
+    }
+
+    .test-list {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      border: 2px solid #e5e7eb;
+    }
+
+    .test-list ul {
+      margin: 0;
+      padding-left: 24px;
+    }
+
+    .test-list li {
+      margin-bottom: 8px;
+      color: #374151;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    .badge.new {
+      background: #10b981;
+    }
+
+    .badge.hot {
+      background: #f59e0b;
+    }
+
+    .footer {
+      text-align: center;
+      color: #999;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .live-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: #10b981;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-container">
+    <h1>🤖 AI 聊天界面高级特性演示</h1>
+    <p class="subtitle">
+      <span class="live-indicator"></span>
+      基于 Vue 3 + Glassmorphism + 高级 CSS 动画
+    </p>
+
+    <!-- 核心特性 -->
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>✨ Glassmorphism</h3>
+        <p>半透明背景 + 毛玻璃模糊效果，打造现代化视觉体验。支持聚焦外发光特效。</p>
+      </div>
+
+      <div class="feature-card">
+        <h3>💭 AI 状态标识</h3>
+        <p>智能状态指示器，在线显示绿色，思考时呈现橙色呼吸律动效果。</p>
+      </div>
+
+      <div class="feature-card">
+        <h3>🎬 TransitionGroup</h3>
+        <p>消息从底部平滑滑入，配合淡入和微缩放，实现丝滑对话流动画。</p>
+      </div>
+
+      <div class="feature-card">
+        <h3>⌨️ 流式输出</h3>
+        <p>模拟 Token 生成，逐字打字机效果，每个字符带微小纵向位移动画。</p>
+      </div>
+
+      <div class="feature-card">
+        <h3>🔮 骨架屏</h3>
+        <p>思考时显示渐变流动的加载骨架，淡蓝色波浪横扫效果，优雅等待。</p>
+      </div>
+
+      <div class="feature-card">
+        <h3>📍 地点高亮</h3>
+        <p>自动识别 17 个校园地点，配备定位图标，悬停交互反馈丰富。</p>
+      </div>
+    </div>
+
+    <!-- 代码示例 -->
+    <div class="demo-section">
+      <h2>📝 核心代码示例</h2>
+      
+      <h3>1. 呼吸律动动画 <span class="badge hot">HOT</span></h3>
+      <div class="code-block">
+<span class="comment">/* AI 思考状态 - 呼吸效果 */</span>
+<span class="keyword">@keyframes</span> <span class="function">breathe</span> {
+  <span class="string">0%, 100%</span> {
+    transform: <span class="function">scale</span>(<span class="string">1</span>);
+    opacity: <span class="string">1</span>;
+    box-shadow: <span class="string">0 0 8px rgba(245, 158, 11, 0.6)</span>;
+  }
+  <span class="string">50%</span> {
+    transform: <span class="function">scale</span>(<span class="string">1.3</span>);
+    opacity: <span class="string">0.7</span>;
+    box-shadow: <span class="string">0 0 16px rgba(245, 158, 11, 0.9)</span>;
+  }
+}
+      </div>
+
+      <h3>2. 流式输出模拟 <span class="badge new">NEW</span></h3>
+      <div class="code-block">
+<span class="keyword">async function</span> <span class="function">simulateStreamingText</span>(text, messageObj) {
+  <span class="keyword">const</span> words = text.<span class="function">split</span>(<span class="string">''</span>)
+  messageObj.text = <span class="string">''</span>
+  messageObj.isStreaming = <span class="keyword">true</span>
+  
+  <span class="keyword">for</span> (<span class="keyword">let</span> i = <span class="string">0</span>; i < words.length; i++) {
+    messageObj.text += words[i]
+    <span class="comment">// 每个字符间隔 30ms</span>
+    <span class="keyword">await new</span> <span class="function">Promise</span>(resolve => <span class="function">setTimeout</span>(resolve, <span class="string">30</span>))
+  }
+  
+  messageObj.isStreaming = <span class="keyword">false</span>
+}
+      </div>
+
+      <h3>3. Watch 自动滚动 <span class="badge">CORE</span></h3>
+      <div class="code-block">
+<span class="comment">// 监听消息变化，自动平滑滚动</span>
+<span class="function">watch</span>(
+  () => messages.value.length,
+  () => {
+    <span class="function">nextTick</span>(() => {
+      <span class="keyword">if</span> (messagesRef.value) {
+        messagesRef.value.<span class="function">scrollTo</span>({
+          top: messagesRef.value.scrollHeight,
+          behavior: <span class="string">'smooth'</span>
+        })
+      }
+    })
+  }
+)
+      </div>
+    </div>
+
+    <!-- 测试清单 -->
+    <div class="demo-section">
+      <h2>🧪 快速测试清单</h2>
+      <div class="test-list">
+        <ul>
+          <li>✅ Glassmorphism 半透明 + 模糊效果</li>
+          <li>✅ AI 状态标识符呼吸动画</li>
+          <li>✅ 消息从底部滑入并淡显</li>
+          <li>✅ 流式输出打字机效果</li>
+          <li>✅ 思考状态骨架屏渐变</li>
+          <li>✅ 输入框聚焦外发光</li>
+          <li>✅ 关键地点自动高亮</li>
+          <li>✅ Watch 监听自动滚动</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 支持的地点 -->
+    <div class="demo-section">
+      <h2>📍 支持的校园地点关键词</h2>
+      <div class="test-list">
+        <p><strong>17 个自动高亮地点：</strong></p>
+        <p style="line-height: 2; color: #555;">
+          图书馆 • 食堂 • 学一食堂 • 学二食堂 • 学三食堂 • 教学楼 • 
+          体育馆 • 宿舍 • 西门 • 东门 • 南门 • 北门 • 操场 • 
+          银杏大道 • 樱花园 • 人工湖 • 行政楼
+        </p>
+      </div>
+    </div>
+
+    <!-- 动画规范 -->
+    <div class="demo-section">
+      <h2>⏱️ 动画时长规范</h2>
+      <div class="test-list">
+        <ul>
+          <li><strong>消息滑入：</strong>400ms (cubic-bezier 弹性缓动)</li>
+          <li><strong>呼吸律动：</strong>1500ms (ease-in-out 循环)</li>
+          <li><strong>骨架屏流动：</strong>2000ms (ease-in-out 循环)</li>
+          <li><strong>流式输出：</strong>30ms/字符 (线性)</li>
+          <li><strong>平滑滚动：</strong>behavior: 'smooth' (自动)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 使用方法 -->
+    <div class="demo-section">
+      <h2>🚀 快速开始</h2>
+      <div class="code-block">
+<span class="comment"># 1. 启动前端项目</span>
+<span class="keyword">cd</span> Tourism_system/frontend
+<span class="keyword">npm</span> run dev
+
+<span class="comment"># 2. 打开浏览器</span>
+http://localhost:5173
+
+<span class="comment"># 3. 点击右下角 AI 助手图标</span>
+
+<span class="comment"># 4. 尝试以下测试问题：</span>
+- <span class="string">"图书馆在哪里？"</span>    <span class="comment"># 测试地点高亮</span>
+- <span class="string">"食堂好吃吗？"</span>      <span class="comment"># 测试流式输出</span>
+- <span class="string">"从西门到东门怎么走？"</span> <span class="comment"># 测试多地点高亮</span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>🎨 设计 & 开发：Vue 3 + Composition API + CSS3 Animation</p>
+      <p>📅 最后更新：2026-01-23</p>
+      <p>✨ 所有特性均已完整实现并测试通过</p>
+    </div>
+  </div>
+</body>
+</html>

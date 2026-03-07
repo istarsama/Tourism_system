@@ -1,0 +1,124 @@
+/* ========================================
+   全局样式文件
+   使用 Tailwind CSS 框架 + 自定义样式
+   定义应用的基础样式、组件样式、工具类
+   ======================================== */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * 基础样式层 - 使用 Tailwind 的 @layer base
+ * 用于重置和全局元素样式
+ * 这些样式会应用到所有页面元素
+ */
+@layer base {
+  /* 页面主体样式 */
+  body {
+    @apply bg-bg-main text-text-main h-screen overflow-hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Windows 默认字体栈 */
+  }
+
+  /* Vue 应用挂载点 */
+  #app {
+    @apply h-screen flex;
+  }
+
+  /* 表单元素基础样式 - 统一表单外观 */
+  button {
+    @apply px-4 py-2.5 border-0 rounded-md cursor-pointer font-medium transition-all duration-200 text-sm;
+  }
+
+  button:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  /* 输入框样式 */
+  input[type="text"],
+  input[type="password"],
+  input[type="number"],
+  textarea,
+  select {
+    @apply w-full px-3 py-2 border border-gray-300 rounded text-sm transition-colors duration-200;
+  }
+
+  /* 聚焦状态 */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    @apply outline-none border-primary;
+  }
+
+  /* 自定义滚动条样式 - 现代化外观 */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 rounded;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-600;
+  }
+}
+
+/*
+ * 组件样式层 - 使用 Tailwind 的 @layer components
+ * 用于可复用的组件类
+ * 这些类可以在组件中直接使用，如 class="btn-primary"
+ */
+@layer components {
+  /* 按钮组件变体 */
+  .btn-primary {
+    @apply bg-bupt-blue text-white hover:bg-blue-600 disabled:hover:bg-bupt-blue;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-600 text-white hover:bg-gray-700 disabled:hover:bg-gray-600;
+  }
+
+  .btn-outline {
+    @apply bg-white border border-border-main text-text-main hover:bg-hover-bg hover:border-primary disabled:hover:bg-white disabled:hover:border-border-main;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  /* Vue 过渡动画类 */
+  .fade-enter-active,
+  .fade-leave-active {
+    @apply transition-opacity duration-300;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    @apply opacity-0;
+  }
+
+  .slide-enter-active,
+  .slide-leave-active {
+    @apply transition-transform duration-300;
+  }
+
+  .slide-enter-from,
+  .slide-leave-to {
+    @apply -translate-x-full;
+  }
+}
+
+/*
+ * 工具类层 - 使用 Tailwind 的 @layer utilities
+ * 用于自定义工具类（大部分已由 Tailwind 提供，这里保留特殊的）
+ */
+@layer utilities {
+  .full-width {
+    @apply w-full;
+  }
+}

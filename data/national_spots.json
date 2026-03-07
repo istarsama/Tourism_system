@@ -1,0 +1,92 @@
+[
+  {
+    "name": "故宫博物院",
+    "type": "人文景观",
+    "latitude": 39.916345,
+    "longitude": 116.397155,
+    "description": "明清皇家宫殿建筑群，世界文化遗产。",
+    "city": "北京",
+    "rating": 4.9
+  },
+  {
+    "name": "颐和园",
+    "type": "历史遗迹",
+    "latitude": 39.999912,
+    "longitude": 116.275522,
+    "description": "大型皇家园林，以昆明湖和万寿山为核心景观。",
+    "city": "北京",
+    "rating": 4.8
+  },
+  {
+    "name": "外滩",
+    "type": "人文景观",
+    "latitude": 31.240011,
+    "longitude": 121.490317,
+    "description": "上海城市地标，黄浦江畔万国建筑群。",
+    "city": "上海",
+    "rating": 4.7
+  },
+  {
+    "name": "上海迪士尼乐园",
+    "type": "主题乐园",
+    "latitude": 31.14337,
+    "longitude": 121.6574,
+    "description": "大型国际主题乐园，适合家庭与年轻游客。",
+    "city": "上海",
+    "rating": 4.8
+  },
+  {
+    "name": "秦始皇兵马俑博物馆",
+    "type": "历史遗迹",
+    "latitude": 34.384927,
+    "longitude": 109.278257,
+    "description": "秦代大型地下军阵遗址，世界文化遗产。",
+    "city": "西安",
+    "rating": 4.9
+  },
+  {
+    "name": "华清宫",
+    "type": "历史遗迹",
+    "latitude": 34.364977,
+    "longitude": 109.215153,
+    "description": "唐代皇家离宫遗址，温泉文化与历史演出闻名。",
+    "city": "西安",
+    "rating": 4.6
+  },
+  {
+    "name": "西湖风景名胜区",
+    "type": "自然景观",
+    "latitude": 30.242958,
+    "longitude": 120.15088,
+    "description": "江南山水园林代表，世界文化景观遗产。",
+    "city": "杭州",
+    "rating": 4.9
+  },
+  {
+    "name": "九寨沟风景名胜区",
+    "type": "自然景观",
+    "latitude": 33.261008,
+    "longitude": 103.918082,
+    "description": "高原湖泊与彩林瀑布群，国家级自然保护区。",
+    "city": "阿坝",
+    "rating": 4.9
+  },
+  {
+    "name": "黄山风景区",
+    "type": "自然景观",
+    "latitude": 30.132948,
+    "longitude": 118.166924,
+    "description": "以奇松、怪石、云海、温泉闻名的山岳景区。",
+    "city": "黄山",
+    "rating": 4.8
+  },
+  {
+    "name": "鼓浪屿",
+    "type": "人文景观",
+    "latitude": 24.447885,
+    "longitude": 118.065878,
+    "description": "中西建筑交融的历史国际社区，世界文化遗产。",
+    "city": "厦门",
+    "rating": 4.7
+  }
+]
