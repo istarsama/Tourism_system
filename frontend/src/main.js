@@ -4,6 +4,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { MotionPlugin } from '@vueuse/motion'
+import router from './router'
 import App from './App.vue'
 import './style.css'
 
@@ -17,6 +18,10 @@ const pinia = createPinia()
 // 注册 Pinia 插件
 // 启用响应式状态管理，所有组件都可以使用 useStore()
 app.use(pinia)
+
+// 注册 Vue Router 插件
+// 启用路由功能，组件可以使用 useRouter() 和 useRoute()
+app.use(router)
 
 // 注册 VueUse Motion 插件
 // 提供动画和过渡效果支持，用于界面交互动画

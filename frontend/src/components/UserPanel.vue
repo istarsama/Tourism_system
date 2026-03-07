@@ -1,7 +1,7 @@
 <template>
   <div class="user-panel">
     <div v-if="!authStore.isAuthenticated" class="logged-out">
-      <button class="btn-primary full-width" @click="showAuthModal = true">
+      <button class="btn-primary full-width" @click="handleLogin">
         登录 / 注册
       </button>
     </div>
@@ -12,19 +12,20 @@
         <button class="btn-sm btn-outline" @click="handleLogout">退出</button>
       </div>
     </div>
-
-    <!-- 认证模态框 -->
-    <AuthModal v-model:show="showAuthModal" />
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import AuthModal from './AuthModal.vue'
 
+const router = useRouter()
 const authStore = useAuthStore()
-const showAuthModal = ref(false)
+
+function handleLogin() {
+  // 使用查询参数触发登录模态框
+  router.push({ query: { login: 'true' } })
+}
 
 function handleLogout() {
   authStore.clearAuth()
