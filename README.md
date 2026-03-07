@@ -88,17 +88,21 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **基础** | `GET` | `/` | 无需 | 服务状态 |
 | **地图** | `GET` | `/graph` | 无需 | 地图节点与边数据 |
+|  | `GET` | `/map/campus-graph` | 无需 | 兼容版校园地图数据接口（同 `/graph`） |
+|  | `GET` | `/map/mode?scope=campus\|national` | 无需 | 返回地图模式配置（中心点、缩放、数据源） |
+|  | `GET` | `/map/national-spots` | 无需 | 全国景点列表，支持 `city` / `type` 过滤，返回 `diary_count`/`diary_api` |
 |  | `GET` | `/spots/list` | 无需 | 获取所有景点（下拉框） |
-|  | `GET` | `/spots/search` | 无需 | 景点模糊搜索 |
+|  | `GET` | `/spots/search` | 无需 | 景点模糊搜索（支持 `scope=campus|national`） |
 | **导航** | `POST` | `/navigate` | 无需 | 单点/多点路线规划，返回 `path_coords` |
+|  | `POST` | `/navigate/osm` | 无需 | 全国景点同城 OSM 导航（`start_spot_id`/`end_spot_id`） |
 | **认证** | `POST` | `/auth/register` | 无需 | 用户注册 |
 |  | `POST` | `/auth/login` | 无需 | 用户登录，返回 Bearer Token |
-| **日记管理** | `POST` | `/diaries/` | 需要 | 发布日记（含媒体链接列表） |
+| **日记管理** | `POST` | `/diaries/` | 需要 | 发布日记（支持 `scope=campus|national`） |
 |  | `POST` | `/diaries/comment` | 需要 | 发表评论并更新平均分 |
 |  | `GET` | `/diaries/detail/{diary_id}` | 无需 | 获取详情（浏览量 +1） |
 |  | `GET` | `/diaries/{diary_id}/comments` | 无需 | 获取评论列表 |
-|  | `GET` | `/diaries/spot/{spot_id}` | 无需 | 获取景点日记列表（支持排序） |
-|  | `GET` | `/diaries/search` | 无需 | 全站搜索与排序推荐 |
+|  | `GET` | `/diaries/spot/{spot_id}` | 无需 | 获取景点日记列表（支持 `scope` + 排序） |
+|  | `GET` | `/diaries/search` | 无需 | 全站搜索与排序推荐（支持 `scope` 过滤） |
 | **AI 智能** | `POST` | `/ai/rag_chat` | 无需 | 问答：本地库 RAG + Tavily 联网搜索路由 |
 |  | `POST` | `/ai/polish` | 无需 | 日记润色 |
 | **文件服务** | `POST` | `/upload` | 无需 | 上传图片/视频（返回静态 URL） |
@@ -201,4 +205,4 @@
 
 ---
 
-> **快速开始**: 请确保在 `src/ai.py` 中填入有效的 DeepSeek API Key，并运行 `uv run uvicorn src.api:app --reload` 启动服务。
+> **快速开始**: 请确保在 `.env` 中配置有效的 `DEEPSEEK_API_KEY`，并按需配置 `DATABASE_URL`（默认 `mysql+pymysql://root:root@127.0.0.1:3306/campus_nav`），然后运行 `uv run uvicorn src.api:app --reload` 启动服务。若需初始化全国景点数据，可执行 `uv run tools/init_national_spots.py`。
