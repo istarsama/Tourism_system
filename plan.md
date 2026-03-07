@@ -23,7 +23,7 @@
 - [x] **Integration Tests**: Verified full flows (Login -> Switch Mode -> Search -> Navigate -> Comment).
 - [x] **Fixes**: Resolved database migration issues for `scope` column.
 
----
+------
 
 ## 🚀 Phase 2: Visualization & Experience Upgrade (Next Steps)
 **Goal:** Move from "Text/List" based National view to a rich "Map" based interface using Leaflet.js.
