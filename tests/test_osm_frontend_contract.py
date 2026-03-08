@@ -89,6 +89,11 @@ def main():
             assert mode_data["scope"] == "national"
             assert mode_data["map_provider"] == "osm"
             assert mode_data["data_source"] == "national_spot"
+            assert mode_data["supports_slippy_map"] is True
+            assert mode_data["coordinate_system"] == "wgs84"
+            assert mode_data["tile_layer"]["tile_url"] == "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            assert mode_data["tile_layer"]["attribution"] == "&copy; OpenStreetMap contributors"
+            assert mode_data["tile_layer"]["requires_backend_proxy"] is False
 
             create_diary_resp = client.post(
                 "/diaries/",
