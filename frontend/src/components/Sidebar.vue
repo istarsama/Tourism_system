@@ -6,7 +6,7 @@
       v-motion
       :initial="{ opacity: 0, x: -100 }"
       :enter="{ opacity: 1, x: 0, transition: { duration: 600 } }"
-      class="fixed left-4 top-4 bottom-4 w-[380px] z-10"
+      class="fixed left-4 top-4 bottom-4 w-[380px] z-[1200]"
     >
       <div class="h-full bg-white/70 backdrop-blur-md rounded-2xl shadow-2xl ring-1 ring-black/5 flex flex-col overflow-hidden">
         <!-- 头部 - 北邮蓝渐变 -->
@@ -71,7 +71,31 @@
           <div class="h-full overflow-y-auto custom-scrollbar">
             <Transition name="tab-fade" mode="out-in">
               <div v-if="activeTab === 'nav'" key="nav">
-                <NavigationPanel @view-spot-diaries="handleViewSpotDiaries" />
+                <div class="mb-3 bg-white/70 backdrop-blur-sm rounded-xl p-1 flex gap-1 ring-1 ring-black/5">
+                  <button
+                    class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-200"
+                    :class="mapStore.activeScope === 'campus'
+                      ? 'bg-bupt-blue text-white shadow'
+                      : 'text-gray-600 hover:text-gray-900'"
+                    @click="switchMapScope('campus')"
+                  >
+                    校园地图
+                  </button>
+                  <button
+                    class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-200"
+                    :class="mapStore.activeScope === 'national'
+                      ? 'bg-bupt-blue text-white shadow'
+                      : 'text-gray-600 hover:text-gray-900'"
+                    @click="switchMapScope('national')"
+                  >
+                    校外 OSM
+                  </button>
+                </div>
+                <NavigationPanel
+                  v-if="mapStore.activeScope === 'campus'"
+                  @view-spot-diaries="handleViewSpotDiaries"
+                />
+                <NationalNavigationPanel v-else />
               </div>
               <div v-else key="diary">
                 <DiaryPanel :spot-id="selectedSpotId" @clear-spot-filter="handleClearSpotFilter" />
@@ -86,7 +110,7 @@
   <!-- 侧边栏切换按钮 - 固定定位 -->
   <button 
     @click="toggleSidebar" 
-    class="fixed top-4 z-[100] bg-white/80 backdrop-blur-md hover:bg-white/90 rounded-xl p-3 shadow-lg ring-1 ring-black/5 active:scale-95 hover:shadow-xl"
+    class="fixed top-4 z-[1300] bg-white/80 backdrop-blur-md hover:bg-white/90 rounded-xl p-3 shadow-lg ring-1 ring-black/5 active:scale-95 hover:shadow-xl"
     :class="isOpen ? 'left-[352px]' : 'left-6'"
     style="transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);"
     :title="isOpen ? '收起侧边栏' : '打开侧边栏'"
@@ -100,23 +124,31 @@ import { ref } from 'vue'
 import { Menu, Navigation, BookOpen } from 'lucide-vue-next'
 import UserPanel from './UserPanel.vue'
 import NavigationPanel from './NavigationPanel.vue'
+import NationalNavigationPanel from './NationalNavigationPanel.vue'
 import DiaryPanel from './DiaryPanel.vue'
+import { useMapStore } from '../stores/map'
 
 const isOpen = ref(true)
 const activeTab = ref('nav')
 const selectedSpotId = ref(null)
+const mapStore = useMapStore()
 
 function toggleSidebar() {
   isOpen.value = !isOpen.value
 }
 
 function handleViewSpotDiaries(spotId) {
+  mapStore.setActiveScope('campus')
   selectedSpotId.value = spotId
   activeTab.value = 'diary'
 }
 
 function handleClearSpotFilter() {
   selectedSpotId.value = null
+}
+
+function switchMapScope(scope) {
+  mapStore.setActiveScope(scope)
 }
 </script>
 
@@ -126,6 +158,10 @@ function handleClearSpotFilter() {
   --bupt-blue: #003d74;
   --bupt-blue-light: #0056a3;
   --mint-green: #10b981;
+}
+
+.bg-bupt-blue {
+  background-color: #003d74;
 }
 
 /* 自定义滚动条 */

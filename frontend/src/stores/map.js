@@ -3,6 +3,8 @@ import { ref, computed } from 'vue'
 import { api } from '../api'
 
 export const useMapStore = defineStore('map', () => {
+  const activeScope = ref('campus')
+
   // 地图数据
   const nodes = ref([])
   const edges = ref([])
@@ -59,7 +61,7 @@ export const useMapStore = defineStore('map', () => {
   async function searchSpots(query) {
     if (!query) return []
     try {
-      const results = await api.searchSpots(query)
+      const results = await api.searchSpots(query, 5, activeScope.value)
       return results
     } catch (err) {
       console.error('Search failed:', err)
@@ -133,7 +135,15 @@ export const useMapStore = defineStore('map', () => {
     transform.value = { ...transform.value, ...newTransform }
   }
 
+  function setActiveScope(scope) {
+    if (scope !== 'campus' && scope !== 'national') {
+      return
+    }
+    activeScope.value = scope
+  }
+
   return {
+    activeScope,
     // 状态
     nodes,
     edges,
@@ -162,5 +172,6 @@ export const useMapStore = defineStore('map', () => {
     setStart,
     setEnd,
     updateTransform,
+    setActiveScope,
   }
 })

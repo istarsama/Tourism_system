@@ -4,6 +4,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { MotionPlugin } from '@vueuse/motion'
+import 'leaflet/dist/leaflet.css'
 import App from './App.vue'
 import './style.css'
 

@@ -39,8 +39,12 @@ apiClient.interceptors.response.use(
 export const api = {
   // 地图相关
   getGraph: () => apiClient.get('/graph'),
-  searchSpots: (query, limit = 5) => apiClient.get('/spots/search', { params: { query, limit } }),
+  getMapMode: (scope = 'campus') => apiClient.get('/map/mode', { params: { scope } }),
+  getNationalSpots: (params = {}) => apiClient.get('/map/national-spots', { params }),
+  searchSpots: (query, limit = 5, scope = 'campus') =>
+    apiClient.get('/spots/search', { params: { query, limit, scope } }),
   navigate: (data) => apiClient.post('/navigate', data),
+  navigateOsm: (data) => apiClient.post('/navigate/osm', data),
 
   // 认证相关
   register: (username, password) => apiClient.post('/auth/register', { username, password }),
