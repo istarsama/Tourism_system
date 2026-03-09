@@ -30,18 +30,6 @@
         <button class="btn-sm btn-outline" @click="loadDiaries">
           🔄 刷新
         </button>
-<<<<<<< HEAD
-        
-        <!-- 发布日记按钮 -->
-        <button 
-          v-if="authStore.isAuthenticated" 
-          class="btn-sm btn-primary" 
-          @click="showCreateModal = true"
-        >
-          ✍️ 发布日记
-        </button>
-=======
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
       </div>
     </div>
 
@@ -62,64 +50,27 @@
         class="diary-item"
         @click="handleViewDiary(diary.id)"
       >
-<<<<<<< HEAD
-        <!-- 小红书风格：左侧缩略图 + 右侧信息 -->
-        <div class="diary-layout">
-          <!-- 封面图：显示第一张图片 -->
-          <div v-if="diary.media_files && diary.media_files.length > 0" class="diary-thumbnail">
-            <img :src="diary.media_files[0]" :alt="diary.title" />
-            <!-- 图片数量标签 -->
-            <span v-if="diary.media_files.length > 1" class="image-count">
-              📷 {{ diary.media_files.length }}
-            </span>
-          </div>
-          
-          <!-- 文字信息区 -->
-          <div class="diary-info">
-            <h4>{{ diary.title }}</h4>
-            <div class="diary-meta">
-              <span>{{ diary.user_name }}</span>
-              <span>⭐ {{ diary.score?.toFixed(1) || 'N/A' }}</span>
-              <span>👁️ {{ diary.view_count || 0 }}</span>
-            </div>
-          </div>
-=======
         <h4>{{ diary.title }}</h4>
         <div class="diary-meta">
           <span>{{ diary.user_name }}</span>
           <span>⭐ {{ diary.score?.toFixed(1) || 'N/A' }}</span>
           <span>👁️ {{ diary.view_count || 0 }}</span>
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
         </div>
       </div>
     </div>
 
-<<<<<<< HEAD
-    <!-- 发布日记模态框 -->
-    <CreateDiaryModal 
-      v-model:show="showCreateModal" 
-      @success="handleCreateSuccess"
-=======
     <!-- 日记详情模态框 -->
     <DiaryDetailModal
       v-model:show="showDetailModal"
       :diary-id="selectedDiaryId"
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
     />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-<<<<<<< HEAD
-import { useRouter } from 'vue-router'
-import { useDiaryStore } from '../stores/diary'
-import { useAuthStore } from '../stores/auth'
-import CreateDiaryModal from './CreateDiaryModal.vue'
-=======
 import { useDiaryStore } from '../stores/diary'
 import DiaryDetailModal from './DiaryDetailModal.vue'
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
 
 const props = defineProps({
   spotId: Number  // 如果传入了景点ID，则只显示该景点的日记
@@ -127,21 +78,11 @@ const props = defineProps({
 
 const emit = defineEmits(['clear-spot-filter'])
 
-<<<<<<< HEAD
-const router = useRouter()
-const diaryStore = useDiaryStore()
-const authStore = useAuthStore()
-
-const searchQuery = ref('')
-const sortBy = ref('latest')
-const showCreateModal = ref(false)
-=======
 const diaryStore = useDiaryStore()
 const searchQuery = ref('')
 const sortBy = ref('latest')
 const showDetailModal = ref(false)
 const selectedDiaryId = ref(null)
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
 
 onMounted(() => {
   loadDiaries()
@@ -175,18 +116,8 @@ function handleSearch() {
 }
 
 function handleViewDiary(id) {
-<<<<<<< HEAD
-  // 使用路由跳转到日记详情页
-  router.push(`/diary/${id}`)
-}
-
-function handleCreateSuccess() {
-  // 发布成功后刷新列表
-  loadDiaries()
-=======
   selectedDiaryId.value = id
   showDetailModal.value = true
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
 }
 </script>
 
@@ -263,60 +194,6 @@ function handleCreateSuccess() {
   border-color: var(--primary-color);
   background: var(--hover-bg);
   transform: translateY(-1px);
-<<<<<<< HEAD
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* 小红书风格布局：左图右文 */
-.diary-layout {
-  display: flex;
-  gap: 12px;
-}
-
-/* 缩略图容器 */
-.diary-thumbnail {
-  position: relative;
-  width: 80px;
-  height: 80px;
-  flex-shrink: 0;
-  border-radius: 6px;
-  overflow: hidden;
-  background: #e5e7eb;
-}
-
-.diary-thumbnail img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s;
-}
-
-.diary-item:hover .diary-thumbnail img {
-  transform: scale(1.05);
-}
-
-/* 图片数量标签 */
-.image-count {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-weight: 500;
-}
-
-/* 文字信息区 */
-.diary-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-width: 0;
-=======
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
 }
 
 .diary-item h4 {
@@ -324,14 +201,6 @@ function handleCreateSuccess() {
   color: var(--primary-color);
   font-size: 15px;
   font-weight: 600;
-<<<<<<< HEAD
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-=======
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
 }
 
 .diary-meta {

@@ -1,8 +1,4 @@
 <template>
-<<<<<<< HEAD
-  <!-- 始终使用 Teleport 模态框模式 -->
-=======
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
   <Teleport to="body">
     <Transition name="fade">
       <div v-if="show && diary" class="modal-overlay" @click="handleClose">
@@ -22,36 +18,10 @@
             {{ diary.content }}
           </div>
 
-<<<<<<< HEAD
-          <!-- 小红书风格图片网格 -->
-          <div v-if="diary.media_files && diary.media_files.length > 0" class="diary-images-grid">
-            <div 
-              v-for="(url, index) in diary.media_files" 
-              :key="index" 
-              class="image-item"
-              :class="getImageClass(diary.media_files.length, index)"
-              @click="viewImage(url)"
-            >
-              <img :src="url" :alt="`图片 ${index + 1}`" loading="lazy" />
-            </div>
-          </div>
-
-          <!-- 大图预览模态框 -->
-          <Teleport to="body">
-            <Transition name="fade">
-              <div v-if="imageViewerVisible" class="image-viewer" @click="closeImageViewer">
-                <img :src="currentImage" alt="大图预览" @click.stop />
-                <button class="viewer-close" @click="closeImageViewer">✕</button>
-              </div>
-            </Transition>
-          </Teleport>
-
-=======
           <div v-if="diary.media_files && diary.media_files.length > 0" class="diary-images">
             <img v-for="(url, index) in diary.media_files" :key="index" :src="url" alt="日记图片" />
           </div>
 
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
           <hr />
 
           <h3>评论 ({{ comments.length }})</h3>
@@ -61,11 +31,7 @@
               暂无评论
             </div>
             
-<<<<<<< HEAD
-            <div v-else v-for="comment in comments" :key="comment.id" class="comment-item">
-=======
             <div v-else v-for="(comment, index) in comments" :key="comment.id ?? `${comment.user_name}-${comment.created_at}-${index}`" class="comment-item">
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
               <div class="comment-header">
                 <span class="comment-author">{{ comment.user_name }}</span>
                 <span class="comment-score">⭐ {{ comment.score }}</span>
@@ -112,11 +78,7 @@
 </template>
 
 <script setup>
-<<<<<<< HEAD
-import { ref, watch } from 'vue'
-=======
 import { ref, watch, computed } from 'vue'
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
 import { useDiaryStore } from '../stores/diary'
 import { useAuthStore } from '../stores/auth'
 
@@ -136,47 +98,12 @@ const commentContent = ref('')
 const commentScore = ref(5)
 const submitting = ref(false)
 
-<<<<<<< HEAD
-// 图片查看器状态
-const imageViewerVisible = ref(false)
-const currentImage = ref('')
-
-// 根据图片数量返回不同的布局类
-function getImageClass(total, index) {
-  if (total === 1) return 'single'
-  if (total === 2) return 'double'
-  if (total === 4) return 'quad'
-  return 'grid' // 3张或5+张使用标准网格
-}
-
-// 查看大图
-function viewImage(url) {
-  currentImage.value = url
-  imageViewerVisible.value = true
-}
-
-// 关闭大图
-function closeImageViewer() {
-  imageViewerVisible.value = false
-}
-
-=======
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
 watch(() => props.show, async (newVal) => {
   if (newVal && props.diaryId) {
     await loadDiaryDetail()
   }
 })
 
-<<<<<<< HEAD
-watch(() => props.diaryId, async (newVal) => {
-  if (newVal && props.show) {
-    await loadDiaryDetail()
-  }
-})
-
-=======
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
 async function loadDiaryDetail() {
   try {
     diary.value = await diaryStore.loadDiary(props.diaryId)
@@ -303,123 +230,6 @@ function handleClose() {
   color: #374151;
 }
 
-<<<<<<< HEAD
-/* 小红书风格图片网格布局 */
-.diary-images-grid {
-  display: grid;
-  gap: 8px;
-  margin: 16px 0;
-}
-
-/* 单张图片：居中显示 */
-.diary-images-grid.single-layout {
-  grid-template-columns: 1fr;
-}
-
-.image-item {
-  position: relative;
-  overflow: hidden;
-  border-radius: 8px;
-  cursor: pointer;
-  background: #f3f4f6;
-}
-
-.image-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s;
-  display: block;
-}
-
-.image-item:hover img {
-  transform: scale(1.05);
-}
-
-/* 1张图：大图显示 */
-.image-item.single {
-  grid-column: span 3;
-  max-height: 400px;
-}
-
-.image-item.single img {
-  object-fit: contain;
-  background: #000;
-}
-
-/* 2张图：左右平分 */
-.diary-images-grid:has(.image-item.double) {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.image-item.double {
-  aspect-ratio: 1;
-}
-
-/* 4张图：2x2网格 */
-.diary-images-grid:has(.image-item.quad) {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.image-item.quad {
-  aspect-ratio: 1;
-}
-
-/* 3张或5+张：标准3列网格 */
-.diary-images-grid:has(.image-item.grid) {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.image-item.grid {
-  aspect-ratio: 1;
-}
-
-/* 大图查看器 */
-.image-viewer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 20px;
-}
-
-.image-viewer img {
-  max-width: 90%;
-  max-height: 90vh;
-  object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-}
-
-.viewer-close {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: white;
-  font-size: 32px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  backdrop-filter: blur(10px);
-}
-
-.viewer-close:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
-=======
 .diary-images {
   margin: 16px 0;
 }
@@ -428,7 +238,6 @@ function handleClose() {
   max-width: 100%;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
 }
 
 hr {

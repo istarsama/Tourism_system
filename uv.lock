@@ -1440,11 +1440,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.128.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "openai", specifier = ">=2.15.0" },
-<<<<<<< HEAD
-    { name = "openpyxl", specifier = ">=3.1.5" },
-=======
     { name = "openpyxl", specifier = ">=3.1.0" },
->>>>>>> 3e1bb36431b7a0f07065b1556bbc344ad7fc5b10
     { name = "osmnx", specifier = ">=2.0.7" },
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },
     { name = "pyexecjs", specifier = ">=1.5.1" },
