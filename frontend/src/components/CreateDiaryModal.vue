@@ -24,11 +24,11 @@
 
             <!-- 景点选择 -->
             <div class="form-group">
-              <label>关联景点</label>
+              <label>关联{{ scopeLabel }} <span class="required">*</span></label>
               <select v-model="formData.spot_id">
-                <option :value="0">不关联景点</option>
+                <option :value="null" disabled>请选择景点</option>
                 <option v-for="spot in spots" :key="spot.id" :value="spot.id">
-                  {{ spot.name }}
+                  {{ spot.name }}{{ spot.city ? `（${spot.city}）` : '' }}
                 </option>
               </select>
             </div>
@@ -93,19 +93,25 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useDiaryStore } from '../stores/diary'
-import { useAuthStore } from '../stores/auth'
 import { api } from '../api'
 
 const props = defineProps({
-  show: Boolean
+  show: Boolean,
+  scope: {
+    type: String,
+    default: 'campus'
+  },
+  presetSpotId: {
+    type: Number,
+    default: null
+  }
 })
 
 const emit = defineEmits(['update:show', 'success'])
 
 const diaryStore = useDiaryStore()
-const authStore = useAuthStore()
 
 const spots = ref([])
 const submitting = ref(false)
@@ -113,10 +119,13 @@ const uploadingImages = ref(false)
 
 const formData = ref({
   title: '',
-  spot_id: 0,
+  spot_id: null,
   content: '',
   media_files: []
 })
+
+const isNationalScope = computed(() => props.scope === 'national')
+const scopeLabel = computed(() => (isNationalScope.value ? '全国景点' : '校园景点'))
 
 // 表单验证
 const isFormValid = computed(() => {
@@ -127,13 +136,42 @@ const isFormValid = computed(() => {
 
 // 加载景点列表
 onMounted(async () => {
+  await loadSpots()
+  applyPresetSpot()
+})
+
+watch(() => props.scope, async () => {
+  await loadSpots()
+  applyPresetSpot()
+})
+
+watch(() => props.show, (show) => {
+  if (show) {
+    applyPresetSpot()
+  }
+})
+
+async function loadSpots() {
   try {
+    if (isNationalScope.value) {
+      spots.value = await api.getNationalSpots({ only_active: true })
+      return
+    }
     const response = await api.getGraph()
     spots.value = response.nodes.filter(node => node.type === 'spot')
   } catch (error) {
     console.error('加载景点失败:', error)
+    spots.value = []
   }
-})
+}
+
+function applyPresetSpot() {
+  if (typeof props.presetSpotId === 'number' && props.presetSpotId > 0) {
+    formData.value.spot_id = props.presetSpotId
+    return
+  }
+  formData.value.spot_id = null
+}
 
 // 文件选择处理
 async function handleFileSelect(event) {
@@ -187,23 +225,34 @@ function removeImage(index) {
 // 提交表单
 async function handleSubmit() {
   if (!isFormValid.value) return
+  const selectedSpotId = Number(formData.value.spot_id)
+  if (!Number.isInteger(selectedSpotId) || selectedSpotId <= 0) {
+    alert('请选择一个景点后再发布')
+    return
+  }
   
   submitting.value = true
   
   try {
-    await diaryStore.createDiary({
+    const payload = {
+      scope: props.scope,
       title: formData.value.title.trim(),
       content: formData.value.content.trim(),
-      spot_id: formData.value.spot_id || undefined,
       media_files: formData.value.media_files
-    })
+    }
+    if (isNationalScope.value) {
+      payload.national_spot_id = selectedSpotId
+    } else {
+      payload.spot_id = selectedSpotId
+    }
+    await diaryStore.createDiary(payload)
     
     alert('✅ 日记发布成功！')
     
     // 重置表单
     formData.value = {
       title: '',
-      spot_id: 0,
+      spot_id: null,
       content: '',
       media_files: []
     }
@@ -333,7 +382,7 @@ function handleClose() {
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: var(--primary-color);
+  border-color: #003d74;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -409,7 +458,7 @@ function handleClose() {
 }
 
 .upload-btn:hover {
-  border-color: var(--primary-color);
+  border-color: #003d74;
   background: #eff6ff;
 }
 
@@ -465,8 +514,9 @@ function handleClose() {
 }
 
 .btn-primary {
-  background: var(--primary-color);
+  background: #003d74;
   color: white;
+  min-width: 104px;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -476,6 +526,7 @@ function handleClose() {
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  background: #7aa2c7;
 }
 
 /* 动画 */
