@@ -101,14 +101,17 @@ function resizeCanvas() {
 
 // 加载地图数据
 async function loadMap() {
-  await mapStore.loadGraph()
+  if (!mapStore.nodes.length) {
+    await mapStore.loadGraph()
+  }
   
   // 加载地图背景图
   mapImage.value = new Image()
-  // Vite 会自动从 public 目录提供静态文件
-  mapImage.value.src = '/map.png'
+  // 使用 BASE_URL，避免子路径部署时静态资源地址错误
+  mapImage.value.src = `${import.meta.env.BASE_URL}map.png`
   mapImage.value.onerror = () => {
     console.error('地图图片加载失败，路径:', mapImage.value.src)
+    mapStore.error = '校园地图底图加载失败，请检查 public/map.png 是否存在'
   }
   mapImage.value.onload = () => {
     console.log('地图图片加载成功')
@@ -117,10 +120,19 @@ async function loadMap() {
   }
 }
 
+function isMapImageReady() {
+  return Boolean(
+    mapImage.value &&
+    mapImage.value.complete &&
+    mapImage.value.naturalWidth > 0 &&
+    mapImage.value.naturalHeight > 0
+  )
+}
+
 // 自适应缩放
 function fitMapToScreen() {
   const canvas = canvasRef.value
-  if (!canvas || !mapImage.value || !mapImage.value.complete) return
+  if (!canvas || !isMapImageReady()) return
 
   const imgW = mapImage.value.width
   const imgH = mapImage.value.height
@@ -284,7 +296,7 @@ function render() {
   context.clearRect(0, 0, canvas.width, canvas.height)
 
   // 1. 绘制地图背景
-  if (mapImage.value && mapImage.value.complete) {
+  if (isMapImageReady()) {
     const t = mapStore.transform
     const imgW = mapImage.value.width
     const imgH = mapImage.value.height

@@ -9,17 +9,32 @@
     }"
     :style="panelStyle"
   >
+    <Transition name="tip-fade">
+      <div v-if="!isExpanded && showExpandTip" class="chat-tip">
+        点击圆球即可使用 AI 助手
+      </div>
+    </Transition>
+
     <!-- AI 状态标识符 -->
     <div 
       class="chat-header"
       @mousedown="handleDragStart"
       @click="handleHeaderClick"
+      :class="{ 'chat-header-collapsed': !isExpanded }"
     >
       <div v-if="isExpanded" class="header-content">
+        <button
+          class="collapse-orb-btn"
+          title="收起 AI 助手"
+          @mousedown.stop
+          @click.stop="collapsePanel"
+        >
+          🤖
+        </button>
         <div class="ai-status-indicator" :class="{ thinking: isThinking }">
           <div class="status-dot"></div>
         </div>
-        <h4>🤖 AI 导游助手</h4>
+        <h4>AI 导游助手</h4>
         <span class="status-text">{{ isThinking ? '思考中...' : '在线' }}</span>
       </div>
     </div>
@@ -104,10 +119,12 @@ import { api } from '../api'
 import { useChatStream, useSmartScroll } from '../composables/useChatStream'
 
 // 状态管理
-const isExpanded = ref(true)
+const isExpanded = ref(false)
 const isInputFocused = ref(false)
 const isThinking = ref(false)
 const isSending = ref(false)
+const TIP_STORAGE_KEY = 'chat_panel_tip_seen_v1'
+const showExpandTip = ref(localStorage.getItem(TIP_STORAGE_KEY) !== '1')
 
 // 消息数据
 let messageId = 0
@@ -139,7 +156,7 @@ const {
 const isDragging = ref(false)
 const dragStartX = ref(0)
 const dragStartY = ref(0)
-const dragDistance = ref(0)
+const didDrag = ref(false)
 const translateX = ref(0)
 const translateY = ref(0)
 
@@ -170,16 +187,18 @@ watch(
 // 拖拽处理 - 使用 transform 优化性能
 function handleDragStart(e) {
   isDragging.value = true
+  didDrag.value = false
   dragStartX.value = e.clientX
   dragStartY.value = e.clientY
-  dragDistance.value = 0
 
   const handleDragMove = (e) => {
     if (!isDragging.value) return
 
     const dx = e.clientX - dragStartX.value
     const dy = e.clientY - dragStartY.value
-    dragDistance.value += Math.abs(dx) + Math.abs(dy)
+    if (dx !== 0 || dy !== 0) {
+      didDrag.value = true
+    }
 
     // 使用 transform 而不是 top/left
     translateX.value += dx
@@ -193,6 +212,9 @@ function handleDragStart(e) {
     isDragging.value = false
     document.removeEventListener('mousemove', handleDragMove)
     document.removeEventListener('mouseup', handleDragEnd)
+    setTimeout(() => {
+      didDrag.value = false
+    }, 0)
   }
 
   document.addEventListener('mousemove', handleDragMove)
@@ -200,13 +222,23 @@ function handleDragStart(e) {
 }
 
 function handleHeaderClick() {
-  if (dragDistance.value < 5) {
-    toggleExpand()
-  }
+  if (didDrag.value) return
+  if (!isExpanded.value) expandPanel()
 }
 
-function toggleExpand() {
-  isExpanded.value = !isExpanded.value
+function markTipAsSeen() {
+  if (!showExpandTip.value) return
+  showExpandTip.value = false
+  localStorage.setItem(TIP_STORAGE_KEY, '1')
+}
+
+function expandPanel() {
+  isExpanded.value = true
+  markTipAsSeen()
+}
+
+function collapsePanel() {
+  isExpanded.value = false
 }
 
 // 高亮关键地点
@@ -401,6 +433,7 @@ async function sendMessage() {
   border-radius: 50%;
   background: linear-gradient(135deg, #003d74 0%, #0056a3 100%);
   backdrop-filter: none;
+  overflow: visible;
   box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
 }
 
@@ -444,10 +477,84 @@ async function sendMessage() {
   transition: all 0.3s ease;
 }
 
+.chat-header-collapsed {
+  cursor: pointer;
+}
+
 .header-content {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.collapse-orb-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #003d74 0%, #0056a3 100%);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow:
+    0 4px 10px rgba(0, 61, 116, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.collapse-orb-btn:hover {
+  transform: scale(1.08);
+  box-shadow:
+    0 6px 14px rgba(0, 86, 163, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.collapse-orb-btn:active {
+  transform: scale(0.95);
+}
+
+.chat-tip {
+  position: absolute;
+  right: 78px;
+  bottom: 14px;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: #003d74;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 61, 116, 0.2);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
+.chat-tip::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  bottom: 18px;
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  border-right: 1px solid rgba(0, 61, 116, 0.2);
+  border-top: 1px solid rgba(0, 61, 116, 0.2);
+  transform: rotate(45deg);
+}
+
+.tip-fade-enter-active,
+.tip-fade-leave-active {
+  transition: all 0.25s ease;
+}
+
+.tip-fade-enter-from,
+.tip-fade-leave-to {
+  opacity: 0;
+  transform: translateX(8px);
 }
 
 .chat-header h4 {

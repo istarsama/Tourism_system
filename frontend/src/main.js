@@ -4,7 +4,9 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { MotionPlugin } from '@vueuse/motion'
+import 'leaflet/dist/leaflet.css'
 import App from './App.vue'
+import router from './router'
 import './style.css'
 
 // 创建 Vue 应用实例
@@ -17,6 +19,7 @@ const pinia = createPinia()
 // 注册 Pinia 插件
 // 启用响应式状态管理，所有组件都可以使用 useStore()
 app.use(pinia)
+app.use(router)
 
 // 注册 VueUse Motion 插件
 // 提供动画和过渡效果支持，用于界面交互动画

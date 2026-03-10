@@ -49,6 +49,28 @@ DEFAULT_MAP_CONFIGS = {
     },
 }
 
+MAP_RENDERING_HINTS = {
+    "campus": {
+        "supports_slippy_map": False,
+        "coordinate_system": "campus_pixel",
+        "tile_layer": None,
+    },
+    "national": {
+        "supports_slippy_map": True,
+        "coordinate_system": "wgs84",
+        "tile_layer": {
+            "tile_url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            "attribution": "&copy; OpenStreetMap contributors",
+            "min_zoom": 3,
+            "max_zoom": 19,
+            "subdomains": ["a", "b", "c"],
+            "usage_tier": "demo",
+            "usage_note": "仅建议开发或课堂演示环境直连公开 OSM 瓦片；生产环境请替换为自建或商用瓦片服务。",
+            "requires_backend_proxy": False,
+        },
+    },
+}
+
 
 def _ensure_default_map_configs(session: Session) -> None:
     created = False
@@ -206,6 +228,17 @@ class XHSPlanRequest(BaseModel):
     days: int = 1
 
 
+class TileLayerResponse(BaseModel):
+    tile_url: str
+    attribution: str
+    min_zoom: int
+    max_zoom: int
+    subdomains: List[str]
+    usage_tier: str
+    usage_note: str
+    requires_backend_proxy: bool
+
+
 class MapModeResponse(BaseModel):
     scope: str
     center_lat: Optional[float]
@@ -213,6 +246,9 @@ class MapModeResponse(BaseModel):
     zoom_level: int
     map_provider: str
     data_source: str
+    supports_slippy_map: bool
+    coordinate_system: str
+    tile_layer: Optional[TileLayerResponse]
 
 
 class NationalSpotMapResponse(BaseModel):
@@ -283,6 +319,7 @@ def get_map_mode(
         session.commit()
         session.refresh(config)
 
+    render_hint = MAP_RENDERING_HINTS[scope]
     return {
         "scope": config.scope,
         "center_lat": config.center_lat,
@@ -290,6 +327,9 @@ def get_map_mode(
         "zoom_level": config.zoom_level,
         "map_provider": config.map_provider,
         "data_source": "campus_graph" if scope == "campus" else "national_spot",
+        "supports_slippy_map": render_hint["supports_slippy_map"],
+        "coordinate_system": render_hint["coordinate_system"],
+        "tile_layer": render_hint["tile_layer"],
     }
 
 

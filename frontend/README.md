@@ -91,6 +91,6 @@ VITE_API_BASE=http://127.0.0.1:8000
 
 ## 注意事项
 
-- 地图图片路径需放在 `public/frontend/map.png`
+- 地图图片路径需放在 `public/map.png`
 - Logo 图片路径需放在 `public/data/xiaohui.jpg`
 - 确保后端已配置 CORS 允许跨域请求

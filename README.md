@@ -89,7 +89,7 @@
 | **基础** | `GET` | `/` | 无需 | 服务状态 |
 | **地图** | `GET` | `/graph` | 无需 | 地图节点与边数据 |
 |  | `GET` | `/map/campus-graph` | 无需 | 兼容版校园地图数据接口（同 `/graph`） |
-|  | `GET` | `/map/mode?scope=campus\|national` | 无需 | 返回地图模式配置（中心点、缩放、数据源） |
+|  | `GET` | `/map/mode?scope=campus\|national` | 无需 | 返回地图模式配置（中心点、缩放、数据源，以及校外网页地图可直接读取的瓦片配置） |
 |  | `GET` | `/map/national-spots` | 无需 | 全国景点列表，支持 `city` / `type` 过滤，返回 `diary_count`/`diary_api` |
 |  | `GET` | `/spots/list` | 无需 | 获取所有景点（下拉框） |
 |  | `GET` | `/spots/search` | 无需 | 景点模糊搜索（支持 `scope=campus|national`） |
@@ -108,6 +108,8 @@
 | **文件服务** | `POST` | `/upload` | 无需 | 上传图片/视频（返回静态 URL） |
 
 ---
+
+`/map/mode` 在 `scope=national` 时，额外返回 `supports_slippy_map`、`coordinate_system` 与 `tile_layer`；其中 `tile_layer` 包含 `tile_url`、`attribution`、`min_zoom`、`max_zoom`、`subdomains` 等字段，供前端 Leaflet 一类网页地图组件直接读取。当前默认给出的 OSM 瓦片配置仅适合开发/演示环境，正式上线请替换为自建或商用瓦片服务。
 
 ## 项目结构变动 (File Structure Changes)
 

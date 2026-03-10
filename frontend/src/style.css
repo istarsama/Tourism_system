@@ -22,7 +22,7 @@
 
   /* Vue 应用挂载点 */
   #app {
-    @apply h-screen flex;
+    @apply h-screen w-screen;
   }
 
   /* 表单元素基础样式 - 统一表单外观 */
@@ -65,6 +65,12 @@
 
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-gray-600;
+  }
+
+  /* Tailwind 预设会给 img 设置 max-width:100%，会影响 Leaflet 切片定位 */
+  .leaflet-container img,
+  .leaflet-container svg {
+    max-width: none !important;
   }
 }
 
