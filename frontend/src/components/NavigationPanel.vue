@@ -2,6 +2,25 @@
   <div class="space-y-4">
     <!-- 路径选择卡片 - Glassmorphism -->
     <div class="bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl p-5 ring-1 ring-black/5 shadow-lg">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-bold text-gray-800">路径设置</h3>
+        <button
+          @click="handleSwapPoints"
+          :disabled="!mapStore.startNode || !mapStore.endNode"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white/80 backdrop-blur-sm rounded-lg text-xs font-semibold text-bupt-blue
+                 ring-1 ring-black/5 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95
+                 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0
+                 transition-all duration-200 group"
+          title="快速切换起点与终点"
+        >
+          <ArrowDownUp
+            :size="14"
+            class="transition-transform duration-300 group-hover:rotate-180"
+          />
+          快速切换
+        </button>
+      </div>
+
       <!-- 起点选择 -->
       <div class="space-y-2">
         <label class="flex items-center gap-2 text-sm font-semibold text-gray-700">
@@ -14,23 +33,6 @@
           :selected="mapStore.startNode"
           @select="handleSelectStart"
         />
-      </div>
-
-      <!-- 起终点切换按钮 - 带旋转动画 -->
-      <div class="flex justify-center -my-2 relative z-10">
-        <button
-          @click="handleSwapPoints"
-          :disabled="!mapStore.startNode || !mapStore.endNode"
-          class="bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-md ring-1 ring-black/5 
-                 hover:shadow-lg hover:scale-110 active:scale-95 
-                 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100
-                 transition-all duration-300 group"
-        >
-          <ArrowDownUp 
-            :size="18" 
-            class="text-bupt-blue transition-transform duration-500 group-hover:rotate-180" 
-          />
-        </button>
       </div>
 
       <!-- 终点选择 -->
