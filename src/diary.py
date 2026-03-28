@@ -11,6 +11,7 @@ from loguru import logger
 from database import get_session
 from models import Diary, User, Comment, NationalSpot  # 👈 确保这里导入了 Comment 模型
 from auth import get_current_user
+from vector_store import upsert_diary
 
 # 创建路由器
 router = APIRouter(prefix="/diaries", tags=["旅游日记"])
@@ -91,6 +92,12 @@ def create_diary(
     【发布日记接口】
     功能：保存用户提交的日记，包括图片链接。
     注意：新发布的日记评分为 0，等待其他用户打分。
+
+    额外说明（向量双写）：
+    - 主流程先保证 MySQL 入库成功；
+    - 然后再尝试写向量库；
+    - 如果向量写入失败，只记录日志，不影响主流程返回成功。
+      这是“最终一致性”策略，保证用户发帖体验不被 AI 依赖阻塞。
     """
     
     if diary_data.scope not in {"campus", "national"}:
@@ -131,8 +138,20 @@ def create_diary(
     session.add(new_diary)
     session.commit()
     session.refresh(new_diary)
+
+    # 4. 尝试把新日记同步到向量库（非阻塞主流程）
+    #    注意：这里故意不回滚 MySQL，因为数据库已经是主事实来源。
+    try:
+        upsert_diary(new_diary)
+    except Exception as exc:
+        logger.error(
+            "日记向量同步失败 diary_id={} scope={} error={}",
+            new_diary.id,
+            new_diary.scope,
+            str(exc),
+        )
     
-    # 4. 返回结果给前端
+    # 5. 返回结果给前端
     return _build_diary_read(session, new_diary)
 
 # 🆕 【新增接口】发表评论并更新评分 (核心逻辑)

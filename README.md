@@ -207,4 +207,15 @@
 
 ---
 
-> **快速开始**: 请确保在 `.env` 中配置有效的 `DEEPSEEK_API_KEY`，并按需配置 `DATABASE_URL`（默认 `mysql+pymysql://root:root@127.0.0.1:3306/campus_nav`），然后运行 `uv run uvicorn src.api:app --reload` 启动服务。若需初始化全国景点数据，可执行 `uv run tools/init_national_spots.py`。
+> **快速开始**: 请确保在 `.env` 中配置有效的 `DEEPSEEK_API_KEY`（或 `OPENAI_COMPAT_API_KEY`），并按需配置 `DATABASE_URL`（默认 `mysql+pymysql://root:root@127.0.0.1:3306/campus_nav`），然后运行 `uv run uvicorn src.api:app --reload` 启动服务。若需初始化全国景点数据，可执行 `uv run tools/init_national_spots.py`。
+>
+> **RAG 向量库配置（新增）**:
+> - `VECTOR_DB_PATH`：本地向量库目录（默认 `./data/chroma`）
+> - `OPENAI_COMPAT_BASE_URL`：OpenAI 兼容 API 地址（默认 `https://api.deepseek.com`）
+> - `OPENAI_COMPAT_API_KEY`：Embedding/Chat 使用的兼容 API Key（未设置时回退 `DEEPSEEK_API_KEY`）
+> - `EMBEDDING_MODEL`：向量模型名（默认 `text-embedding-3-small`）
+>
+> **向量库初始化脚本（新增）**:
+> ```bash
+> uv run python tools/init_vector_db.py
+> ```
