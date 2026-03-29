@@ -214,6 +214,18 @@
 > - `OPENAI_COMPAT_BASE_URL`：OpenAI 兼容 API 地址（默认 `https://api.deepseek.com`）
 > - `OPENAI_COMPAT_API_KEY`：Embedding/Chat 使用的兼容 API Key（未设置时回退 `DEEPSEEK_API_KEY`）
 > - `EMBEDDING_MODEL`：向量模型名（默认 `text-embedding-3-small`）
+> - `EMBEDDING_BACKEND`：向量后端，支持 `openai`（默认）或 `local_hash`（离线开发）
+> - `EMBEDDING_BASE_URL`：仅 embedding 使用的 API 地址（未设置时复用 `OPENAI_COMPAT_BASE_URL`）
+> - `EMBEDDING_API_KEY`：仅 embedding 使用的 API Key（未设置时复用 `OPENAI_COMPAT_API_KEY/DEEPSEEK_API_KEY`）
+>
+> **常见报错排查（Embedding 404）**:
+> - 若出现 `Embedding API 返回 404`，通常表示当前服务不支持你配置的 `EMBEDDING_MODEL` 或 `EMBEDDING_BASE_URL`；
+> - 如果你只配置了聊天模型密钥（例如仅 DeepSeek Chat），可临时使用离线方案：
+>   ```bash
+>   # PowerShell
+>   $env:EMBEDDING_BACKEND="local_hash"
+>   uv run python tools/init_vector_db.py
+>   ```
 >
 > **向量库初始化脚本（新增）**:
 > ```bash

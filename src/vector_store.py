@@ -7,14 +7,18 @@
 3) 统一管理配置项（路径、模型、API Key 等）。
 """
 
+import hashlib
+import math
 import os
 from typing import Any, Dict, List, Literal, Optional, Sequence
 
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
 from langchain_openai import OpenAIEmbeddings
 from loguru import logger
+from openai import NotFoundError
 from sqlmodel import Session, select
 
 from models import Diary, NationalSpot
@@ -33,6 +37,10 @@ VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH", "./data/chroma")
 OPENAI_COMPAT_BASE_URL = os.getenv("OPENAI_COMPAT_BASE_URL", "https://api.deepseek.com")
 OPENAI_COMPAT_API_KEY = os.getenv("OPENAI_COMPAT_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+EMBEDDING_BACKEND = os.getenv("EMBEDDING_BACKEND", "openai").strip().lower()
+EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL") or OPENAI_COMPAT_BASE_URL
+EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY") or OPENAI_COMPAT_API_KEY
+EMBEDDING_VECTOR_SIZE = int(os.getenv("EMBEDDING_VECTOR_SIZE", "256"))
 
 
 def _build_doc_id(doc_type: VectorDocType, mysql_id: int) -> str:
@@ -48,7 +56,46 @@ def _build_doc_id(doc_type: VectorDocType, mysql_id: int) -> str:
     return f"spot:{mysql_id}"
 
 
-def _build_embeddings() -> OpenAIEmbeddings:
+class _LocalHashEmbeddings(Embeddings):
+    """
+    本地哈希嵌入（离线可用）。
+
+    用途：
+    - 仅用于“本地开发/无外部 embedding API”场景；
+    - 语义效果弱于真实 embedding 模型，但可保证流程可跑通。
+    """
+
+    def __init__(self, vector_size: int = 256) -> None:
+        if vector_size <= 0:
+            raise ValueError("EMBEDDING_VECTOR_SIZE 必须为正整数。")
+        self.vector_size = vector_size
+
+    def _embed_text(self, text: str) -> List[float]:
+        vec = [0.0] * self.vector_size
+        normalized = (text or "").strip()
+        if not normalized:
+            return vec
+
+        for idx, token in enumerate(normalized.split()):
+            digest = hashlib.sha256(f"{idx}:{token}".encode("utf-8")).digest()
+            bucket = int.from_bytes(digest[:4], byteorder="little", signed=False) % self.vector_size
+            sign = 1.0 if digest[4] % 2 == 0 else -1.0
+            weight = 0.5 + digest[5] / 255.0
+            vec[bucket] += sign * weight
+
+        norm = math.sqrt(sum(v * v for v in vec))
+        if norm <= 0.0:
+            return vec
+        return [v / norm for v in vec]
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        return [self._embed_text(t) for t in texts]
+
+    def embed_query(self, text: str) -> List[float]:
+        return self._embed_text(text)
+
+
+def _build_embeddings() -> Embeddings:
     """
     创建 LangChain 的 Embedding 客户端（OpenAI 兼容协议）。
 
@@ -56,14 +103,28 @@ def _build_embeddings() -> OpenAIEmbeddings:
     - 这里使用 OPENAI_COMPAT_* 配置，能对接 OpenAI 兼容服务；
     - 若用户没配置 API Key，明确抛错，避免后续出现难定位的空结果。
     """
-    if not OPENAI_COMPAT_API_KEY:
-        raise ValueError("缺少 OPENAI_COMPAT_API_KEY（或 DEEPSEEK_API_KEY），无法初始化嵌入模型。")
+    if EMBEDDING_BACKEND == "local_hash":
+        logger.warning("当前使用本地哈希向量（EMBEDDING_BACKEND=local_hash），检索语义效果会弱于真实 embedding API。")
+        return _LocalHashEmbeddings(vector_size=EMBEDDING_VECTOR_SIZE)
+
+    if EMBEDDING_BACKEND != "openai":
+        raise ValueError("EMBEDDING_BACKEND 仅支持 openai 或 local_hash。")
+    if not EMBEDDING_API_KEY:
+        raise ValueError("缺少 EMBEDDING_API_KEY（或 OPENAI_COMPAT_API_KEY/DEEPSEEK_API_KEY），无法初始化嵌入模型。")
 
     return OpenAIEmbeddings(
         model=EMBEDDING_MODEL,
-        api_key=OPENAI_COMPAT_API_KEY,
-        base_url=OPENAI_COMPAT_BASE_URL,
+        api_key=EMBEDDING_API_KEY,
+        base_url=EMBEDDING_BASE_URL,
     )
+
+
+def _raise_embedding_404_context(exc: NotFoundError) -> None:
+    raise RuntimeError(
+        "Embedding API 返回 404：通常是 base_url 或 embedding 模型不匹配。"
+        "当前可检查/设置：EMBEDDING_BASE_URL、EMBEDDING_MODEL、EMBEDDING_API_KEY。"
+        "如果你只配置了 DeepSeek 聊天密钥且无 embedding 服务，可改用 EMBEDDING_BACKEND=local_hash。"
+    ) from exc
 
 
 def _build_store() -> Chroma:
@@ -169,7 +230,10 @@ def upsert_documents(documents: Sequence[Document]) -> None:
     if not documents:
         return
     store = _build_store()
-    store.add_documents(documents=documents)
+    try:
+        store.add_documents(documents=documents)
+    except NotFoundError as exc:
+        _raise_embedding_404_context(exc)
 
 
 def upsert_diary(diary: Diary) -> None:
@@ -195,7 +259,10 @@ def query_relevant_metadata(query: str, k: int = 6) -> List[Dict[str, Any]]:
       这样可以保证回答依据的是数据库最新完整数据。
     """
     store = _build_store()
-    docs = store.similarity_search(query=query, k=k)
+    try:
+        docs = store.similarity_search(query=query, k=k)
+    except NotFoundError as exc:
+        _raise_embedding_404_context(exc)
     return [doc.metadata for doc in docs if doc.metadata]
 
 
