@@ -53,10 +53,17 @@ def main():
         mode_campus = client.get("/map/mode", params={"scope": "campus"})
         assert mode_campus.status_code == 200
         assert mode_campus.json()["scope"] == "campus"
+        assert mode_campus.json()["supports_slippy_map"] is False
+        assert mode_campus.json()["coordinate_system"] == "campus_pixel"
+        assert mode_campus.json()["tile_layer"] is None
 
         mode_national = client.get("/map/mode", params={"scope": "national"})
         assert mode_national.status_code == 200
         assert mode_national.json()["data_source"] == "national_spot"
+        assert mode_national.json()["supports_slippy_map"] is True
+        assert mode_national.json()["coordinate_system"] == "wgs84"
+        assert mode_national.json()["tile_layer"]["tile_url"] == "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        assert mode_national.json()["tile_layer"]["usage_tier"] == "demo"
 
         graph_data = client.get("/map/campus-graph")
         assert graph_data.status_code == 200

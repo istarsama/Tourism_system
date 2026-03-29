@@ -34,6 +34,7 @@ MENU_ITEMS = [
     ("7", "AI 闲聊", "tests/test_ai.py", "测试 AI 助手基础对话"),
     ("8", "AI RAG", "tests/test_rag.py", "测试 AI 结合地图知识库"),
     ("9", "OSM对接", "tests/test_osm_frontend_contract.py", "测试全国地图/搜索/导航/日记对接链路"),
+    ("10", "向量链路", "tests/test_vector_db.py", "测试向量双写、检索、RAG回查与初始化脚本"),
     
     # 数据库工具
     ("d", "查看数据库", "tools/view_database.py", "查看数据库中的用户/日记/评论"),
@@ -79,6 +80,7 @@ def run_all_tests():
         "tests/test_search.py",
         "tests/test_comment.py",
         "tests/test_ai.py",
+        "tests/test_vector_db.py",
         "tests/test_flow.py",
         "tests/test_osm_frontend_contract.py",
     ]
