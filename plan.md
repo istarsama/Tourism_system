@@ -18,13 +18,18 @@
 
 ---
 
-## 2. 当前状态（已完成分析）
+## 2. 当前状态（2026-03-29 更新）
 
-- 依赖管理：`pyproject.toml` + `uv`，当前尚未引入 LangChain/ChromaDB 依赖。
-- AI 现状：`src/ai.py` 使用 `AsyncOpenAI + Tavily`，已有简化版路由，但非向量 RAG。
-- 数据源：`Diary`、`NationalSpot` 已可作为向量化输入。
-- 写入链路：`src/diary.py` 仅写 MySQL，无向量库同步。
-- 测试方式：脚本式执行（`uv run python tests/<script>.py` / `uv run run_tests.py`）。
+- 阶段 A（依赖与配置）✅ 已完成：`pyproject.toml` 已引入 LangChain/Chroma 相关依赖，配置项已落地。
+- 阶段 B（历史数据灌入）✅ 已完成：`tools/init_vector_db.py` 已实现并可执行。
+- 阶段 C（新增数据双写）✅ 已完成：`src/diary.py` 已在 MySQL 提交后执行向量 upsert，失败仅记录日志。
+- 阶段 D（RAG 主链路）✅ 已完成：`src/ai.py` 已实现“向量检索 -> MySQL 回查 -> 生成回答”。
+- 阶段 E（Tool Calling 路由）✅ 已完成：`src/ai.py` 新增工具路由（内部检索/联网检索）并保留兼容回退链路。
+
+测试现状：
+
+- `uv run python tests/test_vector_db.py`：通过（覆盖向量双写、检索、RAG 回查、初始化脚本）。
+- `tests/test_ai.py`、`tests/test_rag.py` 为外部服务脚本，需先启动后端（`127.0.0.1:8000`）后再测。
 
 ---
 

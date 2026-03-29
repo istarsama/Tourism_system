@@ -15,14 +15,16 @@ AI 路由模块（后端版）。
 
 import os
 from datetime import datetime
-from typing import Dict, List
+from typing import Any, Dict, List, Optional, Set
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.prompts import PromptTemplate
+from langchain_core.tools import StructuredTool
 from langchain_openai import ChatOpenAI
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 from tavily import TavilyClient
 
@@ -81,6 +83,10 @@ class PolishRequest(BaseModel):
     content: str
 
 
+class _ToolQueryInput(BaseModel):
+    query: str = Field(..., description="用户问题或检索关键词。")
+
+
 def _ensure_llm_ready() -> None:
     """
     在每次调用前检查 LLM 是否可用。
@@ -88,6 +94,122 @@ def _ensure_llm_ready() -> None:
     """
     if chat_llm is None:
         raise HTTPException(status_code=500, detail="未配置 AI 模型密钥，请检查 OPENAI_COMPAT_API_KEY/DEEPSEEK_API_KEY。")
+
+
+def _llm_supports_tool_calling() -> bool:
+    """
+    判断当前 LLM 实例是否可用 tool calling。
+    """
+    return chat_llm is not None and hasattr(chat_llm, "bind_tools")
+
+
+def _extract_tool_query(tool_call: Dict[str, Any], fallback_question: str) -> str:
+    """
+    从 tool_call 参数里拿 query；拿不到就回退用户原问题。
+    """
+    args = tool_call.get("args")
+    if isinstance(args, dict):
+        query = args.get("query")
+        if isinstance(query, str) and query.strip():
+            return query.strip()
+    return fallback_question
+
+
+def _source_from_used_tools(used_tools: Set[str]) -> str:
+    """
+    根据工具使用情况生成 source 字段，便于前端与日志追踪来源。
+    """
+    if used_tools == {"RAG", "NET"}:
+        return "工具路由 (RAG+NET)"
+    if used_tools == {"NET"}:
+        return "工具路由 (互联网搜索 Tavily)"
+    if used_tools == {"RAG"}:
+        return "工具路由 (本地向量检索+MySQL回查)"
+    return "工具路由 (AI闲聊)"
+
+
+def _try_tool_calling_route(session: Session, question: str, current_time: str) -> Optional[Dict[str, str]]:
+    """
+    优先使用 Tool Calling 做路由：
+    - 内部工具：向量检索 + MySQL 回查
+    - 外部工具：Tavily 联网搜索
+
+    返回：
+    - 成功路由时返回 {"reply": "...", "source": "..."}
+    - 当前模型不支持 tool calling 时返回 None（调用方继续走旧链路）
+    """
+    if not _llm_supports_tool_calling():
+        return None
+
+    def _internal_retrieval_tool(query: str) -> str:
+        return _build_rag_context_from_mysql(session=session, question=query, k=6)
+
+    def _web_search_tool(query: str) -> str:
+        return _search_internet(f"{query}（当前时间: {current_time}）")
+
+    internal_tool = StructuredTool.from_function(
+        func=_internal_retrieval_tool,
+        name="search_internal_knowledge",
+        description="检索系统内部知识（游记、全国景点），用于校园/景点经验类问题。",
+        args_schema=_ToolQueryInput,
+    )
+    web_tool = StructuredTool.from_function(
+        func=_web_search_tool,
+        name="search_web_knowledge",
+        description="联网检索实时外部信息（天气、新闻、实时动态）。",
+        args_schema=_ToolQueryInput,
+    )
+
+    llm_with_tools = chat_llm.bind_tools([internal_tool, web_tool])
+    router_prompt = (
+        "你是旅游系统助手的工具路由器。"
+        "如果问题涉及系统内部知识，请调用 search_internal_knowledge；"
+        "如果问题涉及实时外部信息，请调用 search_web_knowledge；"
+        "如果只是闲聊，不调用任何工具，直接回答。"
+    )
+    router_response = llm_with_tools.invoke(
+        [
+            SystemMessage(content=router_prompt),
+            HumanMessage(content=question),
+        ]
+    )
+
+    tool_calls = getattr(router_response, "tool_calls", None) or []
+    if not tool_calls:
+        direct_reply = (router_response.content or "").strip()
+        if not direct_reply:
+            direct_reply = (chat_llm.invoke(question).content or "").strip()
+        return {"reply": direct_reply, "source": _source_from_used_tools(set())}
+
+    context_blocks: List[str] = []
+    used_tools: Set[str] = set()
+    for tool_call in tool_calls:
+        tool_name = str(tool_call.get("name", ""))
+        query = _extract_tool_query(tool_call=tool_call, fallback_question=question)
+
+        if tool_name == "search_internal_knowledge":
+            context_blocks.append(f"【工具:内部检索】\n{internal_tool.invoke({'query': query})}")
+            used_tools.add("RAG")
+            continue
+        if tool_name == "search_web_knowledge":
+            context_blocks.append(f"【工具:联网检索】\n{web_tool.invoke({'query': query})}")
+            used_tools.add("NET")
+            continue
+
+        logger.warning("收到未知工具调用 name={}，已跳过。", tool_name)
+
+    if not context_blocks:
+        return {"reply": "我没找到足够信息。", "source": _source_from_used_tools(set())}
+
+    source_tag = _source_from_used_tools(used_tools)
+    context_text = "\n\n".join(context_blocks)
+    reply = _generate_answer(
+        question=question,
+        source_tag=source_tag,
+        context_text=context_text,
+        current_time=current_time,
+    )
+    return {"reply": reply, "source": source_tag}
 
 
 def _classify_intent(question: str, current_time: str) -> str:
@@ -260,6 +382,11 @@ async def rag_chat(request: ChatRequest, session: Session = Depends(get_session)
     current_time = datetime.now().strftime("%Y年%m月%d日 %A")
 
     try:
+        tool_routed = _try_tool_calling_route(session=session, question=question, current_time=current_time)
+        if tool_routed is not None:
+            logger.info("AI 工具路由生效 source={} question={}", tool_routed["source"], question)
+            return tool_routed
+
         intent = _classify_intent(question=question, current_time=current_time)
         logger.info("AI 意图路由 intent={} question={}", intent, question)
 
