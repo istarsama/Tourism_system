@@ -35,6 +35,7 @@ MENU_ITEMS = [
     ("8", "AI RAG", "tests/test_rag.py", "测试 AI 结合地图知识库"),
     ("9", "OSM对接", "tests/test_osm_frontend_contract.py", "测试全国地图/搜索/导航/日记对接链路"),
     ("10", "向量链路", "tests/test_vector_db.py", "测试向量双写、检索、RAG回查与初始化脚本"),
+    ("11", "Agent链路", "tests/test_agent.py", "测试ReAct Agent工具选择、循环终止与链路兼容性"),
     
     # 数据库工具
     ("d", "查看数据库", "tools/view_database.py", "查看数据库中的用户/日记/评论"),
@@ -47,6 +48,9 @@ MENU_ITEMS = [
     ("w", "测试爬虫", "tests/tools/test_spider_run.py", "测试爬虫连接"),
     ("l", "测试长度", "tests/tools/test_data_length.py", "测试数据长度控制"),
     
+    # AI 工具
+    ("m", "Agent手动测", "tools/test_agent_manual.py", "手动验证ReAct Agent对话行为（需后端启动）"),
+
     # 批量测试
     ("a", "运行全部", "ALL_TESTS", "运行所有业务测试"),
 ]
@@ -83,6 +87,7 @@ def run_all_tests():
         "tests/test_vector_db.py",
         "tests/test_flow.py",
         "tests/test_osm_frontend_contract.py",
+        "tests/test_agent.py",
     ]
     
     passed = 0
@@ -135,6 +140,9 @@ def show_menu():
     
     console.print("\n[bold yellow]🕷️  爬虫工具[/bold yellow]")
     console.print("  [cyan]c[/cyan] - 爬取数据  [cyan]w[/cyan] - 测试爬虫  [cyan]l[/cyan] - 测试长度")
+    
+    console.print("\n[bold blue]🤖 AI 工具[/bold blue]")
+    console.print("  [cyan]m[/cyan] - Agent手动测（需后端启动）")
     
     console.print("\n[bold magenta]🚀 批量操作[/bold magenta]")
     console.print("  [cyan]a[/cyan] - 运行全部测试")

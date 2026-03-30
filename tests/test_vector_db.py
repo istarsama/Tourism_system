@@ -80,18 +80,22 @@ class FakeLLMResponse:
 
 class FakeLLM:
     """
-    一个“假大模型”：
-    - 分类阶段固定返回 RAG（覆盖 RAG 主链路）；
-    - 生成阶段返回可断言文本。
+    ReAct Agent 兼容的假大模型：
+    - 第一次调用（无 Observation）：返回调用 RAG 工具的 Action 格式
+    - 后续调用（含 Observation）：返回包含断言文本的 Final Answer
     """
 
-    def invoke(self, prompt):
-        text = str(prompt)
-        if "只能输出 RAG / NET / NONE" in text:
-            return FakeLLMResponse("RAG")
-        return FakeLLMResponse("这是测试用RAG回答。")
-
-
+    def invoke(self, messages):
+        text = str(messages)
+        if "Observation:" in text:
+            return FakeLLMResponse(
+                "Thought: 已获得内部检索结果，可以回答。\nFinal Answer: 这是测试用RAG回答。"
+            )
+        return FakeLLMResponse(
+            "Thought: 需要检索系统内部知识。\n"
+            "Action: search_internal_knowledge\n"
+            "Action Input: 食堂推荐"
+        )
 def seed_base_data() -> tuple[int, int]:
     """
     种子数据：
