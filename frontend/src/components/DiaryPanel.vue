@@ -30,7 +30,19 @@
         <button class="btn-sm btn-outline" @click="loadDiaries">
           🔄 刷新
         </button>
+
+        <button
+          v-if="authStore.isAuthenticated"
+          class="btn-sm btn-primary"
+          @click="showCreateModal = true"
+        >
+          ✍️ 发布
+        </button>
       </div>
+
+      <p v-if="!authStore.isAuthenticated" class="auth-hint">
+        登录后可发布日记
+      </p>
     </div>
 
     <!-- 日记列表 -->
@@ -64,13 +76,23 @@
       v-model:show="showDetailModal"
       :diary-id="selectedDiaryId"
     />
+
+    <CreateDiaryModal
+      v-model:show="showCreateModal"
+      :scope="publishScope"
+      :preset-spot-id="spotId ?? null"
+      @success="handleCreateSuccess"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useDiaryStore } from '../stores/diary'
+import { useAuthStore } from '../stores/auth'
+import { useMapStore } from '../stores/map'
 import DiaryDetailModal from './DiaryDetailModal.vue'
+import CreateDiaryModal from './CreateDiaryModal.vue'
 
 const props = defineProps({
   spotId: Number  // 如果传入了景点ID，则只显示该景点的日记
@@ -79,24 +101,31 @@ const props = defineProps({
 const emit = defineEmits(['clear-spot-filter'])
 
 const diaryStore = useDiaryStore()
+const authStore = useAuthStore()
+const mapStore = useMapStore()
 const searchQuery = ref('')
 const sortBy = ref('latest')
 const showDetailModal = ref(false)
+const showCreateModal = ref(false)
 const selectedDiaryId = ref(null)
+const publishScope = computed(() => (mapStore.activeScope === 'national' ? 'national' : 'campus'))
 
 onMounted(() => {
   loadDiaries()
 })
 
 watch(() => props.spotId, () => {
-  if (props.spotId) {
-    loadDiaries()
-  }
+  loadDiaries()
+})
+
+watch(() => mapStore.activeScope, () => {
+  loadDiaries()
 })
 
 async function loadDiaries() {
   const params = {
-    sort_by: sortBy.value
+    sort_by: sortBy.value,
+    scope: publishScope.value
   }
   
   if (searchQuery.value) {
@@ -118,6 +147,10 @@ function handleSearch() {
 function handleViewDiary(id) {
   selectedDiaryId.value = id
   showDetailModal.value = true
+}
+
+async function handleCreateSuccess() {
+  await loadDiaries()
 }
 </script>
 
@@ -163,6 +196,12 @@ function handleViewDiary(id) {
 
 .filter-row select {
   flex: 1;
+}
+
+.auth-hint {
+  margin: 0;
+  color: #6b7280;
+  font-size: 12px;
 }
 
 .diary-list {
