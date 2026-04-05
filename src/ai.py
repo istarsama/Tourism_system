@@ -1,10 +1,11 @@
 """
-AI 路由模块（ReAct Agent 版）。
+AI 路由模块（LangGraph 多智能体版）。
 
 重构说明：
-- 旧的"工具路由 + 意图分类"链路已替换为 ReAct Agent 模式
-- Agent 通过工具 description 自主决策调用哪个工具，执行 ReAct 循环
-- 工具定义见 ai_tools.py，Agent 运行时见 ai_agent.py
+- 旧的单体 ReAct 循环已替换为 LangGraph 多智能体架构
+- 意图路由智能体 → RAG 专家 / Web 专家 / 直接闲聊，单次请求只走一条路径
+- 工具层改为 LangChain 原生 @tool，支持 .bind_tools() 原生 JSON Schema 工具调用
+- 图节点见 ai_agent.py：router_node / rag_agent_node / web_agent_node / chat_node / finalize_node
 - 保持前端接口不变：POST /ai/rag_chat，返回 {"reply": ..., "source": ...}
 - POST /ai/polish 日记润色接口保持原有逻辑不变
 """
@@ -21,8 +22,8 @@ from pydantic import BaseModel
 from sqlmodel import Session
 from tavily import TavilyClient
 
-from ai_agent import run_react_agent
-from ai_tools import build_all_tools
+from ai_agent import run_multi_agent
+from ai_tools import build_rag_tool, build_web_tool
 from database import get_session
 
 load_dotenv()
@@ -69,7 +70,7 @@ def _ensure_llm_ready() -> None:
 
 @router.post("/rag_chat")
 async def rag_chat(request: ChatRequest, session: Session = Depends(get_session)):
-    """核心对话接口（ReAct Agent 版，保持与前端兼容）。"""
+    """核心对话接口（LangGraph 多智能体版，保持与前端兼容）。"""
     question = request.message.strip()
     if not question:
         raise HTTPException(status_code=400, detail="message 不能为空。")
@@ -78,13 +79,15 @@ async def rag_chat(request: ChatRequest, session: Session = Depends(get_session)
     current_time = datetime.now().strftime("%Y年%m月%d日 %A")
 
     try:
-        tools = build_all_tools(
-            session=session,
-            tavily_client=tavily_client,
-            current_time=current_time,
+        rag_tool = build_rag_tool(session)
+        web_tool = build_web_tool(tavily_client, current_time)
+        result = run_multi_agent(
+            llm=chat_llm,
+            rag_tool=rag_tool,
+            web_tool=web_tool,
+            question=question,
         )
-        result = run_react_agent(llm=chat_llm, tools=tools, question=question)
-        logger.info("ReAct Agent 完成 source={} question={}", result.get("source"), question[:50])
+        logger.info("Multi-Agent 完成 source={} question={}", result.get("source"), question[:50])
         return result
     except HTTPException:
         raise

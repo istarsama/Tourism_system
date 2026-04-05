@@ -122,9 +122,17 @@ app = FastAPI(title="校园旅游系统", lifespan=lifespan)
 # --- 配置跨域 (允许前端网页访问) ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    # 允许哪些前端源来访问？"*" 代表允许所有。
+    # 在公司生产环境中，为了安全，通常会严格写成 ["https://your-frontend-domain.com"]
+    allow_origins=["*"],  
+    
+    # 是否允许前端发送 Cookie、Token 等用户凭证？
+    allow_credentials=True, 
+    
+    # 允许前端使用哪些 HTTP 方法？(GET, POST, PUT, DELETE 等) "*" 代表全放行。
     allow_methods=["*"],
+    
+    # 允许前端在请求里带上哪些自定义的请求头？"*" 代表全放行。
     allow_headers=["*"],
 )
 

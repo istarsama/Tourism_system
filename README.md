@@ -32,207 +32,214 @@
 
 ## 项目简介
 
-本项目是一个集成了**生成式 AI**、**多维推荐算法**与**社交互动**功能的校园旅游系统。核心亮点在于利用 **RAG (检索增强生成)** 技术，让 AI 能够基于私有的日记数据库回答用户问题，同时具备日记热度统计、动态评分推荐、多媒体分享等完整业务闭环。
+这是一个围绕 **校园导览 + 旅游日记 + AI 问答** 构建的全栈项目。它不是简单的课程作业展示页，而是把地图导航、内容社区、RAG 检索、多智能体路由和数据库工程化改造放在一起，做成了一个可继续迭代的系统。
 
-## 目录
+当前版本已经完成 **MySQL -> PostgreSQL/PostGIS** 迁移，并将数据库以 **Docker 隔离容器** 的方式部署，为后续空间查询、记忆持久化与会话隔离预留了能力。
 
-- [项目简介](#项目简介)
-- [核心功能亮点](#核心功能亮点-key-features)
-- [API 接口概览](#api-接口概览)
-- [项目结构变动](#项目结构变动-file-structure-changes)
-- [更新日志](#changelog)
+## 一眼看点
 
----
+| 模块 | 亮点 |
+| :--- | :--- |
+| **地图导航** | 校园像素坐标地图，不是套第三方地图 API 的“假导航” |
+| **AI 能力** | LangGraph 多智能体 + RAG + 联网搜索 |
+| **内容社区** | 日记、评论、评分、浏览量、排序推荐形成完整闭环 |
+| **数据库** | PostgreSQL 16 + PostGIS 3.4，Docker 独立部署 |
+| **可扩展性** | 已为会话持久化、长期记忆、空间检索预留结构 |
 
-## 核心功能亮点 (Key Features)
+## 核心功能
 
-### 0. 沉浸式拟真导航 (Immersive Navigation)
-- **像素级可视化**：不同于传统的地图 API，本项目采用**自定义像素坐标系**。导航路线直接绘制在精美的校园手绘图上，提供沉浸式的视觉体验。
-- **智能路径规划**：
-    - 内置 **Dijkstra** 与 **多点规划算法**，无论是从 A 到 B，还是顺路去拿个快递，都能规划出最优路线。
-    - 支持 **模糊搜索 (Fuzzy Search)**，再也不用担心输错地名找不到路。
-- **开发者友好的工具链**：内置 HTML5 地图构建器，无需专业 GIS 知识，点点鼠标即可绘制属于你自己的校园路网。
+### 1. 沉浸式校园导航
 
-### 1. AI 智能导游 (AI Agent & RAG)
-- **DeepSeek 大模型接入**：集成 DeepSeek V3/V3.2 接口，实现自然语言智能对话。
-- **RAG (检索增强生成)**：
-    - 实现了基于私有数据库的 **RAG Agent**。
-    - **意图识别**：自动分析用户提问，提取核心关键词（如“食堂”、“银杏”）。
-    - **知识库问答**：自动检索数据库中的真实日记数据，结合上下文回答用户提问（如“根据大家反馈，学一食堂好吃吗？”）。
-- **日记润色**：利用 LLM 的文学能力，一键美化用户的日记草稿，提升内容质量。
+- 基于自定义校园平面图与像素坐标系
+- 支持 Dijkstra 最短路与多点路线规划
+- 支持地点模糊搜索
+- 前端可直接绘制路线，实现更接近真实校园导览的体验
 
-### 2. 动态推荐与排序 (Recommendation Engine)
-- **热度系统 (Hotness)**：
-    - 数据库级原子化更新，用户访问详情页自动增加浏览量 (`view_count`)。
-- **多维排序算法**：
-    - **热度优先**：基于浏览量的降序排序算法。
-    - **评分优先**：基于用户加权平均分的排序算法。
-    - **时间倒序**：展示最新发布的动态。
-- **全站检索**：支持 `OR` 逻辑的全文模糊检索，可同时匹配标题与内容。
+### 2. AI 导游与 RAG 问答
 
-### 3. 社交与多媒体 (Social & Multimedia)
-- **动态评分**：摒弃作者自评，采用**用户评论加权平均算法**，实时更新日记得分。
-- **文件服务**：支持图片/视频上传，配置静态资源挂载，实现媒体资源的直接访问。
+- 接入 DeepSeek / OpenAI-Compatible 大模型
+- LangGraph 多智能体路由：Router / RAG Agent / Web Agent
+- 内部知识使用 **向量检索 -> `db_id` 主库回查**
+- 支持旅游问答、实时信息补充、日记润色
 
-### 4. 进阶 AI Agent (Advanced Multi-Agent)
-- **LangGraph 多智能体架构**：
-    - 采用 [LangGraph](https://github.com/langchain-ai/langgraph) 将后端 AI 编排层重构为强类型状态图（`TypedDict GraphState`），告别手写字符串 ReAct 循环与正则解析。
-    - 三智能体分工：
-        - **意图路由智能体（Router）**：接收用户问题后，将请求路由到 RAG 专家 / Web 专家 / 直接闲聊三条路径之一，单次请求只走一条路径。
-        - **内部旅游专家智能体（RAG Agent）**：只绑定 `search_internal_knowledge` 工具，专注校园经验、景点介绍、旅游日记等内部数据查询，系统提示词针对日记与全国景点数据结构深度优化。
-        - **外部资讯研究员智能体（Web Agent）**：只绑定 `search_web_knowledge` 工具，专注天气、新闻、交通等实时外部动态查询。
-- **Native Tool Calling**：工具层改用 LangChain `@tool` 装饰器 + `.bind_tools([...])` 原生 JSON Schema 调用，不再依赖字符串格式协议，大幅提升工具调用稳定性。
-- **强类型状态管理**：`GraphState (TypedDict)` 统一管理 `question / route / messages / used_tools / final_answer / source / error / step_count`，节点间通过状态图通信。
-- **混合检索架构 (Hybrid Search)**：RAG Agent 保持“向量检索 → db_id 回查”链路；Web Agent 保持 Tavily 实时搜索能力，既能回答“食堂好不好吃”（私有数据），也能回答“北京明天冷不冷”（公有数据）。
+### 3. 日记社区与推荐系统
 
----
+- 发布校园/全国景点日记
+- 评论后自动更新平均分
+- 详情页浏览量自动累加
+- 支持热度、评分、时间三种排序逻辑
+- 支持关键词搜索与 `scope` 范围过滤
 
-## API 接口概览
+### 4. 全国景点与 OSM 扩展
 
-| 模块 | 方法 | 路径 | 鉴权 | 描述 |
-| :--- | :--- | :--- | :--- | :--- |
-| **基础** | `GET` | `/` | 无需 | 服务状态 |
-| **地图** | `GET` | `/graph` | 无需 | 地图节点与边数据 |
-|  | `GET` | `/map/campus-graph` | 无需 | 兼容版校园地图数据接口（同 `/graph`） |
-|  | `GET` | `/map/mode?scope=campus\|national` | 无需 | 返回地图模式配置（中心点、缩放、数据源，以及校外网页地图可直接读取的瓦片配置） |
-|  | `GET` | `/map/national-spots` | 无需 | 全国景点列表，支持 `city` / `type` 过滤，返回 `diary_count`/`diary_api` |
-|  | `GET` | `/spots/list` | 无需 | 获取所有景点（下拉框） |
-|  | `GET` | `/spots/search` | 无需 | 景点模糊搜索（支持 `scope=campus|national`） |
-| **导航** | `POST` | `/navigate` | 无需 | 单点/多点路线规划，返回 `path_coords` |
-|  | `POST` | `/navigate/osm` | 无需 | 全国景点同城 OSM 导航（`start_spot_id`/`end_spot_id`） |
-| **认证** | `POST` | `/auth/register` | 无需 | 用户注册 |
-|  | `POST` | `/auth/login` | 无需 | 用户登录，返回 Bearer Token |
-| **日记管理** | `POST` | `/diaries/` | 需要 | 发布日记（支持 `scope=campus|national`） |
-|  | `POST` | `/diaries/comment` | 需要 | 发表评论并更新平均分 |
-|  | `GET` | `/diaries/detail/{diary_id}` | 无需 | 获取详情（浏览量 +1） |
-|  | `GET` | `/diaries/{diary_id}/comments` | 无需 | 获取评论列表 |
-|  | `GET` | `/diaries/spot/{spot_id}` | 无需 | 获取景点日记列表（支持 `scope` + 排序） |
-|  | `GET` | `/diaries/search` | 无需 | 全站搜索与排序推荐（支持 `scope` 过滤） |
-| **AI 智能** | `POST` | `/ai/rag_chat` | 无需 | 问答：本地库 RAG + Tavily 联网搜索路由 |
-|  | `POST` | `/ai/polish` | 无需 | 日记润色 |
-| **文件服务** | `POST` | `/upload` | 无需 | 上传图片/视频（返回静态 URL） |
+- 提供全国景点列表、过滤和日记联动
+- 支持同城景点 OSM 导航
+- 已为 PostGIS 空间能力预留后续扩展空间
 
----
+### 5. 爬虫导入与知识积累
 
-`/map/mode` 在 `scope=national` 时，额外返回 `supports_slippy_map`、`coordinate_system` 与 `tile_layer`；其中 `tile_layer` 包含 `tile_url`、`attribution`、`min_zoom`、`max_zoom`、`subdomains` 等字段，供前端 Leaflet 一类网页地图组件直接读取。当前默认给出的 OSM 瓦片配置仅适合开发/演示环境，正式上线请替换为自建或商用瓦片服务。
+- 集成小红书 Spider 工具链
+- 支持爬取、清洗、景点匹配、导入数据库
+- 可作为 RAG 的真实用户评价语料来源
 
-## 项目结构变动 (File Structure Changes)
+## 系统架构
 
-本次更新涉及的核心文件修改如下：
+```mermaid
+flowchart LR
+    U[User / Frontend] --> API[FastAPI]
+    API --> NAV[Navigation Engine]
+    API --> DB[(PostgreSQL + PostGIS)]
+    API --> VDB[(Chroma Vector DB)]
+    API --> AGENT[LangGraph Multi-Agent]
+    AGENT --> RAG[RAG Agent]
+    AGENT --> WEB[Web Agent]
+    AGENT --> CHAT[Direct Chat]
+    RAG --> VDB
+    RAG --> DB
+    WEB --> LLM[LLM]
+    CHAT --> LLM
+    RAG --> LLM
+```
 
-- `src/models.py`: 
-    -  新增 `Comment` 表。
-    -  修改 `Diary` 表 (增加 `view_count`, `media_json`, `score` 字段)。
-- `src/diary.py`: 
-    -  重构发布接口。
-    -  新增 `add_comment` (评论并算分) 与 `search_diaries` (搜索与排序) 接口。
-- `src/ai.py` **[NEW]**: 
-    -  新增 AI 核心模块，封装 Chat、Polish 和 RAG 检索逻辑。
-- `src/upload.py` **[NEW]**: 
-    -  新增文件上传处理逻辑。
-- `src/api.py`: 
-    -  注册 AI 和 Upload 路由。
-    -  增加静态文件挂载 (`Mount StaticFiles`)。
+## 技术栈
 
----
+| 层级 | 技术 |
+| :--- | :--- |
+| **后端** | FastAPI, SQLModel, SQLAlchemy |
+| **数据库** | PostgreSQL 16, PostGIS 3.4, Docker Compose |
+| **AI 编排** | LangGraph, LangChain Tools |
+| **向量检索** | Chroma |
+| **模型接入** | DeepSeek / OpenAI-Compatible API |
+| **实时搜索** | Tavily |
+| **算法** | Dijkstra, 模糊搜索, 推荐排序 |
 
-<a id="changelog"></a>
-##  更新日志 (Update Log) - 2026/1/29
-###  2026/1/29 - v2.5 正式版：数据爬虫与智能导入系统
-- **[Feature] 小红书数据爬取 (XHS Crawler)**：
-    - 实现完整的小红书笔记爬取系统，为 RAG 提供真实用户评价数据源。
-    - 集成 `Spider_XHS` 模块，支持关键词搜索并自动导入数据库。
-- **[Algo] 智能景点匹配 (Smart Spot Matching)**：
-    - 采用 **Levenshtein Distance (编辑距离)** 算法实现模糊匹配。
-    - 支持两级策略：精确匹配（包含关系）+ 模糊匹配（相似度>60%）。
-    - 示例："北邮食堂" 自动匹配 "学生食堂"（相似度85%）。
-- **[Data] 数据清洗与去重 (Data Cleaning)**：
-    - 智能长度控制：标题最多400字符，内容最多5000字符。
-    - 标题去重机制：避免重复导入相同笔记。
-    - 完整保留元数据：作者、点赞数、图片、原文链接。
-- **[DB] 数据库升级 (Database Enhancement)**：
-    - 解决字段长度限制问题：`content VARCHAR(255)` → `TEXT` (支持65K字符)。
-    - 升级 `title` 字段：`VARCHAR(255)` → `VARCHAR(500)`。
-    - 新增自动化升级脚本 `upgrade_database.py`。
-- **[Tool] 爬虫工具集 (Crawler Toolkit)**：
-    - 交互式导入：`uv run tools/import_crawled_data.py`（用户友好界面）。
-    - 批量导入：支持多关键词自动化处理。
-    - 统一入口：集成到 `run_tests.py` 主菜单（输入 `c` 启动）。
-- **[Account] 爬虫专用账号 (Bot Account)**：
-    - 创建 `spider_bot` 虚拟账号（ID: 5）统一管理爬取数据。
-    - 所有爬虫日记标题带 `[搬运]` 前缀，便于追溯来源。
+## 快速开始
 
-###  2026/1/19 - v2.4 正式版：AI Agent 联网与时空感知
-- **[Feature] AI 联网搜索 (Internet Search)**：
-    - 集成 **Tavily API**，使 DeepSeek 具备访问实时互联网的能力。
-    - 解决了大模型无法回答“明天天气”、“最新新闻”等时效性问题的痛点。
-- **[Arch] 意图识别路由 (Intent Router)**：
-    - 采用 **ReAct (Reasoning + Acting)** 架构，设计了基于 Prompt 的轻量级路由层。
-    - AI 能精准判断用户意图：
-        -  **校内问题** -> 路由至本地数据库 (RAG)
-        -  **校外/实时问题** -> 路由至互联网搜索 (Tavily)
-        -  **闲聊** -> 直接回答
-- **[Fix] 时空感知 (Temporal Awareness)**：
-    - 在 Prompt 中动态注入**系统当前时间**，消除了 AI 的“时间幻觉” (Time Hallucination)，确保天气查询等功能的准确性。
+### 1. 启动 PostgreSQL / PostGIS
 
-###  22:20 - v2.3 正式版：拟真路线与可视化导航
-- **[Map] 自研像素级地图引擎**：
-    - 摒弃抽象经纬度，基于真实校园平面图 (`map.png`) 构建 `(x, y)` 像素坐标系，实现“所见即所得”的精准定位。
-    - 配套开发 **可视化打点工具 (`map_tool.html`)**，支持鼠标点击快速生成路网 JSON 数据，支持撤销、改名与闭环连接。
-- **[Nav] 可视化路径规划**：
-    - 后端接口 `/navigate` 升级，新增返回 `path_coords` (像素坐标点集)。
-    - 前端支持在地图图片上通过 SVG/Canvas 动态绘制导航红线，直观展示行走路线。
-- **[Algo] 高级算法集成**：
-    - **多点途经规划**：支持“西门 -> 图书馆 -> 食堂”的 TSP (旅行商问题) 近似路径规划。
-    - **模糊地点搜索**：集成 `thefuzz` 库，支持“学一”自动匹配“学一食堂”并定位。
-    - **多策略导航**：支持 **步行 (最短距离)** 与 **自行车 (最短时间)** 两种权重策略切换。
+```bash
+docker compose up -d
+```
 
-### 超级测试工具箱
-为了方便开发者调试，项目内置了交互式测试套件。
-- **启动方式**: 
-  ```bash
-  uv run run_tests.py
-  ```
+默认数据库配置：
 
-### 16:30 - v2.1 正式版：AI 深度集成
-- **[Feature]** RAG Agent 上线：AI 现已支持读取私有数据库内容回答问题。
-- **[Feature]** 意图识别优化：AI 可精准提取搜索关键词。
-- **[Feature]** 日记润色功能上线。
+```env
+DATABASE_URL=postgresql+psycopg://campus_user:campus_pass@127.0.0.1:5432/campus_nav
+```
 
-### 15:50 - v2.1 修复版：算法修正
-- **[Fix]** 修复评分算法：优化了平均分计算逻辑，现在发布日记及评论后的得分显示正常。
-- **[Model]** 模型升级：`ai.py` 接入 DeepSeek-v3.2 模型。
+### 2. 安装依赖
 
-### 15:00 - v2.0 大版本：核心业务上线
-- **[Core]** 日记热度系统上线 (View Count)。
-- **[Core]** 推荐算法实装 (Heat/Score/Time Sorting)。
-- **[Search]** 全文检索引擎上线。
-- **[Media]** 图片/视频上传与静态资源托管完成。
-- **[System]** 增加 `lifespan` 自动数据库表结构检测与修复。
+```bash
+uv sync
+```
 
----
+### 3. 配置 `.env`
 
-> **快速开始**: 请确保在 `.env` 中配置有效的 `DEEPSEEK_API_KEY`（或 `OPENAI_COMPAT_API_KEY`），并按需配置 `DATABASE_URL`（默认 `postgresql+psycopg://campus_user:campus_pass@127.0.0.1:5432/campus_nav`）。数据库使用 Docker 部署的 PostGIS，首次启动请先运行 `docker compose up -d`，然后运行 `uv run uvicorn src.api:app --reload` 启动服务。若需初始化全国景点数据，可执行 `uv run tools/init_national_spots.py`。
->
-> **RAG 向量库配置（新增）**:
-> - `VECTOR_DB_PATH`：本地向量库目录（默认 `./data/chroma`）
-> - `OPENAI_COMPAT_BASE_URL`：OpenAI 兼容 API 地址（默认 `https://api.deepseek.com`）
-> - `OPENAI_COMPAT_API_KEY`：Embedding/Chat 使用的兼容 API Key（未设置时回退 `DEEPSEEK_API_KEY`）
-> - `EMBEDDING_MODEL`：向量模型名（默认 `text-embedding-3-small`）
-> - `EMBEDDING_BACKEND`：向量后端，支持 `openai`（默认）或 `local_hash`（离线开发）
-> - `EMBEDDING_BASE_URL`：仅 embedding 使用的 API 地址（未设置时复用 `OPENAI_COMPAT_BASE_URL`）
-> - `EMBEDDING_API_KEY`：仅 embedding 使用的 API Key（未设置时复用 `OPENAI_COMPAT_API_KEY/DEEPSEEK_API_KEY`）
->
-> **常见报错排查（Embedding 404）**:
-> - 若出现 `Embedding API 返回 404`，通常表示当前服务不支持你配置的 `EMBEDDING_MODEL` 或 `EMBEDDING_BASE_URL`；
-> - 如果你只配置了聊天模型密钥（例如仅 DeepSeek Chat），可临时使用离线方案：
->   ```bash
->   # PowerShell
->   $env:EMBEDDING_BACKEND="local_hash"
->   uv run python tools/init_vector_db.py
->   ```
->
-> **向量库初始化脚本（新增）**:
-> ```bash
-> uv run python tools/init_vector_db.py
-> ```
+至少确认以下环境变量：
+
+```env
+DATABASE_URL=postgresql+psycopg://campus_user:campus_pass@127.0.0.1:5432/campus_nav
+SECRET_KEY=your-secret-key
+DEEPSEEK_API_KEY=your-deepseek-api-key
+TAVILY_API_KEY=your-tavily-api-key
+XHS_COOKIE=your-xiaohongshu-cookie
+```
+
+如果只想本地离线调试向量链路，可增加：
+
+```env
+EMBEDDING_BACKEND=local_hash
+```
+
+### 4. 启动后端
+
+```bash
+uv run uvicorn src.api:app --reload
+```
+
+服务默认地址：
+
+```text
+http://127.0.0.1:8000
+```
+
+### 5. 初始化可选数据
+
+初始化全国景点：
+
+```bash
+uv run tools/init_national_spots.py
+```
+
+初始化向量库：
+
+```bash
+uv run python tools/init_vector_db.py
+```
+
+## 常用命令
+
+| 用途 | 命令 |
+| :--- | :--- |
+| 启动数据库 | `docker compose up -d` |
+| 查看数据库状态 | `docker compose ps` |
+| 启动后端 | `uv run uvicorn src.api:app --reload` |
+| 打开测试工具箱 | `uv run python run_tests.py` |
+| 查看数据库 | `uv run python tools/view_database.py` |
+| 初始化全国景点 | `uv run tools/init_national_spots.py` |
+| 初始化向量库 | `uv run python tools/init_vector_db.py` |
+
+## API 概览
+
+| 模块 | 路径 | 说明 |
+| :--- | :--- | :--- |
+| **基础状态** | `/` | 服务状态 |
+| **地图** | `/graph`, `/map/campus-graph`, `/map/mode`, `/map/national-spots` | 校园/全国景点地图能力 |
+| **景点搜索** | `/spots/list`, `/spots/search` | 景点列表与模糊搜索 |
+| **导航** | `/navigate`, `/navigate/osm` | 校园路径规划与 OSM 导航 |
+| **认证** | `/auth/register`, `/auth/login` | 注册与登录 |
+| **日记** | `/diaries/*` | 发布、评论、详情、搜索 |
+| **AI** | `/ai/rag_chat`, `/ai/polish` | RAG 问答与日记润色 |
+| **文件上传** | `/upload` | 图片/视频上传 |
+
+## 当前迁移状态
+
+本次数据库改造已经落地完成：
+
+- 默认数据库已切换为 PostgreSQL/PostGIS
+- `pymysql` 已替换为 `psycopg`
+- Docker 中隔离部署数据库容器
+- MySQL 方言脚本已改写为 PostgreSQL 兼容实现
+- 已加入会话/记忆相关表结构，为后续持久化能力铺路
+
+前端或队友本地换库说明见：[`docs/DB_MIGRATION_GUIDE.md`](docs/DB_MIGRATION_GUIDE.md)
+
+## 项目结构
+
+```text
+Tourism_system/
+├─ src/                    # 后端核心代码
+├─ frontend/               # 前端页面
+├─ tests/                  # 自动化测试
+├─ tools/                  # 导入、初始化、调试工具
+├─ docs/                   # 项目文档
+├─ docker/                 # PostgreSQL/PostGIS 初始化脚本
+├─ data/                   # 地图、向量库、静态数据
+├─ docker-compose.yml      # 本地数据库编排
+└─ run_tests.py            # 交互式测试工具箱
+```
+
+## 文档导航
+
+- [快速开始](docs/QUICK_START.md)
+- [数据库迁移指南](docs/DB_MIGRATION_GUIDE.md)
+- [爬虫导入指南](docs/CRAWL_IMPORT_GUIDE.md)
+- [项目结构说明](docs/PROJECT_STRUCTURE.md)
+- [常见问题排查](docs/QUICK_FIX.md)
+
+## 后续规划
+
+- 建立正式的 schema migration 机制
+- 补齐历史业务数据迁移脚本
+- 为全国景点加入 geometry 列与空间索引
+- 持续完善会话隔离与长期记忆能力

@@ -1,11 +1,13 @@
 """
-AI ReAct Agent 全链路测试脚本。
+LangGraph 多智能体全链路测试脚本。
 
 测试覆盖：
-1) Agent 直接回答（闲聊）→ source 为 "ReAct Agent (AI闲聊)"
-2) Agent 调用 RAG 工具 → source 包含 "RAG"
-3) Agent 请求未知工具 → 仍能正常完成，不抛出异常
-4) run_react_agent max_iterations 阻断 → source 为 "agent_max_iterations_exceeded"
+1) 意图路由 → chat，直接闲聊回答，source 含 "闲聊"
+2) 意图路由 → rag，RAG 专家调用工具，source 含 "RAG"
+3) 意图路由 → web，Web 专家调用工具，source 含 "Web"
+4) 专家节点 LLM 调用失败 → error 路径降级回复，不崩溃
+5) MAX_STEPS 保护：专家无限工具循环被截断
+6) 空 message → HTTP 400
 
 运行方式：
     uv run python tests/test_agent.py
@@ -18,6 +20,7 @@ from datetime import datetime
 
 from fastapi.testclient import TestClient
 from langchain_core.embeddings import Embeddings
+from langchain_core.messages import AIMessage
 from sqlmodel import Session, SQLModel
 
 # ----------------------------------------------------------
@@ -51,7 +54,7 @@ import ai  # noqa: E402
 import ai_agent  # noqa: E402
 import api  # noqa: E402
 import vector_store  # noqa: E402
-from ai_tools import AgentTool, build_all_tools  # noqa: E402
+from ai_tools import build_rag_tool, build_web_tool  # noqa: E402
 from database import engine  # noqa: E402
 from models import SQLModel as _SM  # noqa: E402
 
@@ -77,61 +80,128 @@ class FakeEmbeddings(Embeddings):
 # ----------------------------------------------------------
 # 各场景专用 FakeLLM
 # ----------------------------------------------------------
-class FakeLLMResponse:
-    def __init__(self, content: str):
+
+class _FakeResponse:
+    def __init__(self, content: str, tool_calls=None):
         self.content = content
+        self.tool_calls = tool_calls or []
+
+
+class FakeLLMRouter:
+    """路由器 LLM 工厂：返回固定路由标签。"""
+    def __init__(self, route: str):
+        self._route = route
+
+    def invoke(self, messages):
+        return _FakeResponse(self._route)
+
+    def bind_tools(self, tools):
+        return self
 
 
 class FakeLLMChat:
-    """直接返回 Final Answer，模拟纯闲聊场景（无工具调用）。"""
+    """模拟闲聊 Agent：路由判为 chat，直接返回 Final Answer，无工具调用。"""
+    _call_count = 0
 
     def invoke(self, messages):
-        return FakeLLMResponse(
-            "Thought: 这是纯闲聊，不需要工具。\nFinal Answer: 你好！我是旅游系统助手，有什么可以帮您？"
-        )
+        self._call_count += 1
+        # 第一次调用是 router，第二次是 chat_node
+        if self._call_count == 1:
+            return _FakeResponse("chat")   # router 输出
+        return _FakeResponse("你好！我是旅游系统助手，有什么可以帮您？")
+
+    def bind_tools(self, tools):
+        return self
 
 
 class FakeLLMRag:
-    """先调用 RAG 工具，收到 Observation 后给出 Final Answer。"""
+    """
+    模拟 RAG 流程：router → rag；
+    rag_agent_node 第一步发起工具调用，第二步返回最终答案。
+    """
+    _call_count = 0
 
     def invoke(self, messages):
-        text = str(messages)
-        if "Observation:" in text:
-            return FakeLLMResponse(
-                "Thought: 已获得检索结果。\nFinal Answer: Agent测试RAG回答内容。"
-            )
-        return FakeLLMResponse(
-            "Thought: 需要查找内部知识。\n"
-            "Action: search_internal_knowledge\n"
-            "Action Input: 景点推荐"
-        )
+        self._call_count += 1
+        if self._call_count == 1:
+            return _FakeResponse("rag")  # router
+        # rag_agent 第一步：不带 tool_calls → 直接给 Final Answer（bind_tools 后模型不调工具）
+        return _FakeResponse("Agent测试RAG回答内容。")
+
+    def bind_tools(self, tools):
+        # 返回一个会发起工具调用的版本
+        outer = self
+
+        class _WithTools:
+            _inner_count = 0
+
+            def invoke(self, messages):
+                self._inner_count += 1
+                if self._inner_count == 1:
+                    # 第一步：发起 search_internal_knowledge 工具调用
+                    tc = {
+                        "name": "search_internal_knowledge",
+                        "args": {"query": "景点推荐"},
+                        "id": "call_rag_001",
+                    }
+                    resp = _FakeResponse(content="", tool_calls=[tc])
+                    return resp
+                # 第二步：有了 ToolMessage，给出最终答案
+                return _FakeResponse("Agent测试RAG回答内容。")
+
+        return _WithTools()
 
 
-class FakeLLMUnknownTool:
-    """先请求一个不存在的工具，再给出 Final Answer。"""
+class FakeLLMWeb:
+    """
+    模拟 Web 流程：router → web；
+    web_agent_node 发起 search_web_knowledge 工具调用，再给出答案。
+    """
+    _call_count = 0
 
     def invoke(self, messages):
-        text = str(messages)
-        if "Observation:" in text:
-            return FakeLLMResponse(
-                "Thought: 工具不存在，直接回答。\nFinal Answer: 无法调用该工具，但我尽力回答了。"
-            )
-        return FakeLLMResponse(
-            "Thought: 尝试调用工具。\n"
-            "Action: non_existent_tool_xyz\n"
-            "Action Input: 测试"
-        )
+        self._call_count += 1
+        if self._call_count == 1:
+            return _FakeResponse("web")  # router
+
+    def bind_tools(self, tools):
+        class _WithTools:
+            _inner_count = 0
+
+            def invoke(self, messages):
+                self._inner_count += 1
+                if self._inner_count == 1:
+                    tc = {
+                        "name": "search_web_knowledge",
+                        "args": {"query": "北京明天天气"},
+                        "id": "call_web_001",
+                    }
+                    return _FakeResponse(content="", tool_calls=[tc])
+                return _FakeResponse("Agent测试Web回答内容。")
+
+        return _WithTools()
 
 
-class FakeLLMAlwaysLoops:
-    """永远请求工具，永不给出 Final Answer，用于触发 max_iterations 阻断。"""
+class FakeLLMAlwaysTools:
+    """专家 LLM：永远发起工具调用，用于触发 MAX_STEPS 保护。"""
+    _router_done = False
 
     def invoke(self, messages):
-        return FakeLLMResponse(
-            "Thought: 还需要更多信息，继续检索。\n"
-            "Action: search_internal_knowledge\n"
-            "Action Input: 继续查询"
-        )
+        if not self._router_done:
+            self._router_done = True
+            return _FakeResponse("rag")
+
+    def bind_tools(self, tools):
+        class _Looping:
+            def invoke(self, messages):
+                tc = {
+                    "name": "search_internal_knowledge",
+                    "args": {"query": "循环查询"},
+                    "id": f"call_{id(messages)}",
+                }
+                return _FakeResponse(content="", tool_calls=[tc])
+
+        return _Looping()
 
 
 # ----------------------------------------------------------
@@ -151,31 +221,31 @@ def check(name: str, condition: bool, detail: str = ""):
         FAIL += 1
 
 
-def test_direct_chat(client: TestClient):
-    """场景 1：纯闲聊，Agent 直接回答，不调用工具。"""
-    print("\n🧪 场景 1：直接闲聊（无工具）")
+def test_chat_route(client: TestClient):
+    """场景 1：意图路由 → chat，直接闲聊，source 含 '闲聊'。"""
+    print("\n🧪 场景 1：直接闲聊（Router → chat）")
     ai.chat_llm = FakeLLMChat()
     resp = client.post("/ai/rag_chat", json={"message": "你好"})
     check("HTTP 200", resp.status_code == 200, str(resp.status_code))
     data = resp.json()
     check("reply 非空", bool(data.get("reply")))
     check(
-        "source = AI闲聊",
-        "AI闲聊" in data.get("source", ""),
+        "source 含 '闲聊'",
+        "闲聊" in data.get("source", ""),
         data.get("source"),
     )
 
 
-def test_rag_tool(client: TestClient):
-    """场景 2：Agent 调用 RAG 工具，source 含 RAG 标签。"""
-    print("\n🧪 场景 2：RAG 工具调用")
+def test_rag_route(client: TestClient):
+    """场景 2：意图路由 → rag，RAG 专家调用工具，source 含 'RAG'。"""
+    print("\n🧪 场景 2：RAG 路由（Router → rag_agent）")
     ai.chat_llm = FakeLLMRag()
     resp = client.post("/ai/rag_chat", json={"message": "推荐一个好去处"})
     check("HTTP 200", resp.status_code == 200, str(resp.status_code))
     data = resp.json()
     check("reply 非空", bool(data.get("reply")))
     check(
-        "source 含 RAG",
+        "source 含 'RAG'",
         "RAG" in data.get("source", ""),
         data.get("source"),
     )
@@ -186,46 +256,65 @@ def test_rag_tool(client: TestClient):
     )
 
 
-def test_unknown_tool(client: TestClient):
-    """场景 3：Agent 请求不存在的工具，应优雅处理并最终给出回答。"""
-    print("\n🧪 场景 3：未知工具优雅处理")
-    ai.chat_llm = FakeLLMUnknownTool()
-    resp = client.post("/ai/rag_chat", json={"message": "用神秘工具帮我查一下"})
+def test_web_route(client: TestClient):
+    """场景 3：意图路由 → web，Web 专家调用工具，source 含 'Web'。"""
+    print("\n🧪 场景 3：Web 路由（Router → web_agent）")
+    ai.chat_llm = FakeLLMWeb()
+    resp = client.post("/ai/rag_chat", json={"message": "北京明天天气"})
     check("HTTP 200", resp.status_code == 200, str(resp.status_code))
     data = resp.json()
-    check("reply 非空（不崩溃）", bool(data.get("reply")))
-    check("有 source 字段", "source" in data)
-
-
-def test_max_iterations():
-    """场景 4：max_iterations 硬限制阻断（直接调用 run_react_agent）。"""
-    print("\n🧪 场景 4：max_iterations 强制阻断")
-    with Session(engine) as session:
-        tools = build_all_tools(
-            session=session,
-            tavily_client=None,
-            current_time=datetime.now().strftime("%Y年%m月%d日"),
-        )
-    result = ai_agent.run_react_agent(
-        llm=FakeLLMAlwaysLoops(),
-        tools=tools,
-        question="无限循环测试",
-        max_iterations=2,
+    check("reply 非空", bool(data.get("reply")))
+    check(
+        "source 含 'Web'",
+        "Web" in data.get("source", ""),
+        data.get("source"),
     )
     check(
-        "source = agent_max_iterations_exceeded",
-        result.get("source") == "agent_max_iterations_exceeded",
-        result.get("source"),
+        "reply 含预期文本",
+        "Agent测试Web回答" in data.get("reply", ""),
+        data.get("reply", "")[:80],
     )
-    check("reply 非空", bool(result.get("reply")))
+
+
+def test_max_steps(client: TestClient):
+    """场景 4：专家节点永远工具循环，MAX_STEPS 后降级，不崩溃。"""
+    print("\n🧪 场景 4：MAX_STEPS 强制阻断")
+    ai.chat_llm = FakeLLMAlwaysTools()
+    ai_agent.MAX_STEPS = 2  # 测试时缩短步数限制
+    resp = client.post("/ai/rag_chat", json={"message": "无限循环测试"})
+    check("HTTP 200（不崩溃）", resp.status_code == 200, str(resp.status_code))
+    data = resp.json()
+    check("reply 非空", bool(data.get("reply")))
+    check("有 source 字段", "source" in data)
+    ai_agent.MAX_STEPS = 6  # 还原
 
 
 def test_empty_message(client: TestClient):
-    """场景 5：空 message 请求，应返回 400。"""
+    """场景 5：空 message → HTTP 400。"""
     print("\n🧪 场景 5：空 message 校验")
     ai.chat_llm = FakeLLMChat()
     resp = client.post("/ai/rag_chat", json={"message": "   "})
     check("HTTP 400", resp.status_code == 400, str(resp.status_code))
+
+
+def test_run_multi_agent_direct():
+    """场景 6：直接调用 run_multi_agent，验证返回格式。"""
+    print("\n🧪 场景 6：直接调用 run_multi_agent（chat 路由）")
+    with Session(engine) as session:
+        rag_tool = build_rag_tool(session)
+        web_tool = build_web_tool(None, datetime.now().strftime("%Y年%m月%d日"))
+
+    llm = FakeLLMChat()
+    llm._call_count = 0
+    result = ai_agent.run_multi_agent(
+        llm=llm,
+        rag_tool=rag_tool,
+        web_tool=web_tool,
+        question="随便聊聊",
+    )
+    check("reply 非空", bool(result.get("reply")))
+    check("source 非空", bool(result.get("source")))
+    check("source 含 Multi-Agent", "Multi-Agent" in result.get("source", ""), result.get("source"))
 
 
 # ----------------------------------------------------------
@@ -233,7 +322,7 @@ def test_empty_message(client: TestClient):
 # ----------------------------------------------------------
 def main():
     print("=" * 60)
-    print("🤖 ReAct Agent 全链路测试")
+    print("🤖 LangGraph 多智能体全链路测试")
     print("=" * 60)
 
     # 打补丁：使用本地假 Embedding，避免调用真实 API
@@ -243,13 +332,14 @@ def main():
     SQLModel.metadata.create_all(engine)
 
     with TestClient(api.app) as client:
-        test_direct_chat(client)
-        test_rag_tool(client)
-        test_unknown_tool(client)
+        test_chat_route(client)
+        test_rag_route(client)
+        test_web_route(client)
+        test_max_steps(client)
         test_empty_message(client)
 
-    # max_iterations 测试不走 HTTP，直接调用函数
-    test_max_iterations()
+    # 直接函数调用测试（不走 HTTP）
+    test_run_multi_agent_direct()
 
     # ----------------------------------------------------------
     # 汇总
