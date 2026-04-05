@@ -13,8 +13,8 @@ def _as_bool(raw: str | None, default: bool) -> bool:
 
 
 # 1. 配置数据库连接地址（可通过 .env 覆盖）
-# DATABASE_URL 示例: mysql+pymysql://root:root@127.0.0.1:3306/campus_nav
-DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:root@127.0.0.1:3306/campus_nav")
+# DATABASE_URL 示例: postgresql+psycopg://campus_user:campus_pass@127.0.0.1:5432/campus_nav
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://campus_user:campus_pass@127.0.0.1:5432/campus_nav")
 SQL_ECHO = _as_bool(os.getenv("SQL_ECHO"), False)
 
 # 2. 创建引擎 (Engine)

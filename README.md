@@ -74,11 +74,16 @@
 - **动态评分**：摒弃作者自评，采用**用户评论加权平均算法**，实时更新日记得分。
 - **文件服务**：支持图片/视频上传，配置静态资源挂载，实现媒体资源的直接访问。
 
-### 4. 进阶 AI Agent (Advanced AI Agent)
-- **Tool Use (工具调用)**：
-    - 系统内置了 **LocalDB (本地库)** 和 **Internet (互联网)** 两种工具。AI 不再是单纯的文本生成器，而是具备**行动能力**的智能体。
-- **混合检索架构 (Hybrid Search)**：
-    - 结合了 **RAG (检索增强生成)** 与 **Real-time Search (实时搜索)**。既能回答“食堂好不好吃”（私有数据），也能回答“北京明天冷不冷”（公有数据）。
+### 4. 进阶 AI Agent (Advanced Multi-Agent)
+- **LangGraph 多智能体架构**：
+    - 采用 [LangGraph](https://github.com/langchain-ai/langgraph) 将后端 AI 编排层重构为强类型状态图（`TypedDict GraphState`），告别手写字符串 ReAct 循环与正则解析。
+    - 三智能体分工：
+        - **意图路由智能体（Router）**：接收用户问题后，将请求路由到 RAG 专家 / Web 专家 / 直接闲聊三条路径之一，单次请求只走一条路径。
+        - **内部旅游专家智能体（RAG Agent）**：只绑定 `search_internal_knowledge` 工具，专注校园经验、景点介绍、旅游日记等内部数据查询，系统提示词针对日记与全国景点数据结构深度优化。
+        - **外部资讯研究员智能体（Web Agent）**：只绑定 `search_web_knowledge` 工具，专注天气、新闻、交通等实时外部动态查询。
+- **Native Tool Calling**：工具层改用 LangChain `@tool` 装饰器 + `.bind_tools([...])` 原生 JSON Schema 调用，不再依赖字符串格式协议，大幅提升工具调用稳定性。
+- **强类型状态管理**：`GraphState (TypedDict)` 统一管理 `question / route / messages / used_tools / final_answer / source / error / step_count`，节点间通过状态图通信。
+- **混合检索架构 (Hybrid Search)**：RAG Agent 保持“向量检索 → db_id 回查”链路；Web Agent 保持 Tavily 实时搜索能力，既能回答“食堂好不好吃”（私有数据），也能回答“北京明天冷不冷”（公有数据）。
 
 ---
 
@@ -207,7 +212,7 @@
 
 ---
 
-> **快速开始**: 请确保在 `.env` 中配置有效的 `DEEPSEEK_API_KEY`（或 `OPENAI_COMPAT_API_KEY`），并按需配置 `DATABASE_URL`（默认 `mysql+pymysql://root:root@127.0.0.1:3306/campus_nav`），然后运行 `uv run uvicorn src.api:app --reload` 启动服务。若需初始化全国景点数据，可执行 `uv run tools/init_national_spots.py`。
+> **快速开始**: 请确保在 `.env` 中配置有效的 `DEEPSEEK_API_KEY`（或 `OPENAI_COMPAT_API_KEY`），并按需配置 `DATABASE_URL`（默认 `postgresql+psycopg://campus_user:campus_pass@127.0.0.1:5432/campus_nav`）。数据库使用 Docker 部署的 PostGIS，首次启动请先运行 `docker compose up -d`，然后运行 `uv run uvicorn src.api:app --reload` 启动服务。若需初始化全国景点数据，可执行 `uv run tools/init_national_spots.py`。
 >
 > **RAG 向量库配置（新增）**:
 > - `VECTOR_DB_PATH`：本地向量库目录（默认 `./data/chroma`）

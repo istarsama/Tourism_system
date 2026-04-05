@@ -87,7 +87,7 @@ Tourism_system/
 `.env` 文件配置：
 
 ```env
-DATABASE_URL=mysql+pymysql://root:root@127.0.0.1:3306/campus_nav
+DATABASE_URL=postgresql+psycopg://campus_user:campus_pass@127.0.0.1:5432/campus_nav
 SECRET_KEY=your-secret-key
 DEEPSEEK_API_KEY=your-deepseek-api-key
 TAVILY_API_KEY=your-tavily-api-key
@@ -109,7 +109,7 @@ XHS_COOKIE=your-xiaohongshu-cookie
 
 ## 📊 技术栈
 
-- **后端**: FastAPI + SQLModel + MySQL
+- **后端**: FastAPI + SQLModel + PostgreSQL/PostGIS (Docker)
 - **AI**: DeepSeek V3 + Tavily Search
 - **爬虫**: 小红书 Spider
 - **算法**: Dijkstra + 模糊搜索

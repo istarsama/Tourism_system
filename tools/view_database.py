@@ -1,6 +1,6 @@
 """
 数据库查看工具
-用于快速查看 MySQL 数据库中的用户、日记和评论数据
+用于快速查看数据库中的用户、日记和评论数据（兼容 PostgreSQL / MySQL / SQLite）
 """
 from sqlmodel import Session, select
 from src.database import engine
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ 错误: {e}")
         print("\n💡 提示:")
-        print("1. 确保 MySQL 服务已启动")
+        print("1. 确保数据库服务已启动 (docker compose up -d)")
         print("2. 检查 .env 文件中的 DATABASE_URL 配置")
         print("3. 运行 'uv run src/create_tables.py' 创建表")
         print("4. 运行 'uv run src/import_data.py' 导入数据\n")

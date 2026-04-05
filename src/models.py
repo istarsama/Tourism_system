@@ -1,7 +1,8 @@
 from typing import Dict, Optional, List
 from datetime import datetime
+from uuid import uuid4
 from sqlmodel import SQLModel, Field
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, Index
 
 # ==========================================
 # 景点与地图相关模型 
@@ -230,5 +231,74 @@ class MapConfig(SQLModel, table=True):
     center_lng: Optional[float] = Field(default=None)
     zoom_level: int = Field(default=15)
     map_provider: str = Field(default="campus_canvas")
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
+# ==========================================
+# 会话与记忆持久化模型
+# ==========================================
+
+def _uuid_str() -> str:
+    return str(uuid4())
+
+
+class ChatSession(SQLModel, table=True):
+    """
+    聊天会话表：每个用户可以有多个独立会话。
+    所有查询必须同时按 user_id + id 过滤，保证会话隔离。
+    """
+    __tablename__ = "chat_session"
+    __table_args__ = (
+        Index("ix_chat_session_user_active", "user_id", "last_active_at"),
+    )
+
+    id: str = Field(default_factory=_uuid_str, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    title: str = Field(default="新对话")
+    status: str = Field(default="active", index=True)  # active / archived
+    summary: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    last_active_at: datetime = Field(default_factory=datetime.now)
+
+
+class ChatMessage(SQLModel, table=True):
+    """
+    聊天消息表：存储会话中的每一轮对话。
+    按 session_id + created_at 排序即可重放完整对话。
+    """
+    __tablename__ = "chat_message"
+    __table_args__ = (
+        Index("ix_chat_message_session_time", "session_id", "created_at"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    session_id: str = Field(foreign_key="chat_session.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    role: str = Field(index=True)       # user / assistant / system / tool
+    content: str
+    metadata_json: str = Field(default="{}")  # 工具调用结果、来源标记等
+    created_at: datetime = Field(default_factory=datetime.now)
+
+
+class MemoryItem(SQLModel, table=True):
+    """
+    记忆条目表：存储从对话中提取的持久化记忆。
+    - session 级记忆：绑定到特定会话，会话归档后可清理
+    - user 级记忆：跨会话持久，如用户偏好、历史摘要
+    """
+    __tablename__ = "memory_item"
+    __table_args__ = (
+        Index("ix_memory_user_scope", "user_id", "memory_scope"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    session_id: Optional[str] = Field(default=None, foreign_key="chat_session.id", index=True)
+    memory_scope: str = Field(default="session", index=True)  # session / user / system
+    content: str
+    source: str = Field(default="auto")      # auto / manual / summary
+    importance: float = Field(default=0.5)   # 0.0 ~ 1.0
+    expires_at: Optional[datetime] = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)

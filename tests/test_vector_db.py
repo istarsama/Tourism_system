@@ -11,7 +11,7 @@ from sqlmodel import Session, SQLModel
 # 这份脚本是“向量数据库全链路测试”
 # 目标：把你刚才做的核心能力尽量都串起来验证一遍：
 # 1) 日记发布后触发向量双写（diary.py -> vector_store.upsert_diary）
-# 2) 向量检索 + MySQL 回查（ai.py 的 RAG 主链路）
+# 2) 向量检索 + 数据库 回查（ai.py 的 RAG 主链路）
 # 3) 全量初始化脚本（tools/init_vector_db.py）
 # =========================================================
 
@@ -143,7 +143,7 @@ def main():
         api.app.dependency_overrides[diary.get_current_user] = fake_current_user
         try:
             # -------------------------------------------------
-            # 2.1 发布 campus 日记（应触发 MySQL + 向量双写）
+            # 2.1 发布 campus 日记（应触发 数据库 + 向量双写）
             # -------------------------------------------------
             r1 = client.post(
                 "/diaries/",
@@ -173,15 +173,15 @@ def main():
             assert r2.status_code == 200, r2.text
 
             # -------------------------------------------------
-            # 3) 验证向量检索函数可返回 metadata（mysql_id/type）
+            # 3) 验证向量检索函数可返回 metadata（db_id/type）
             # -------------------------------------------------
             metadatas = vector_store.query_relevant_metadata("食堂 推荐", k=5)
             assert isinstance(metadatas, list)
             assert len(metadatas) >= 1
-            assert any(("mysql_id" in md and "type" in md) for md in metadatas)
+            assert any(("db_id" in md and "type" in md) for md in metadatas)
 
             # -------------------------------------------------
-            # 4) 验证 ai /rag_chat 走 RAG 主链路（向量检索 + MySQL回查）
+            # 4) 验证 ai /rag_chat 走 RAG 主链路（向量检索 + 数据库回查）
             # -------------------------------------------------
             rag_resp = client.post("/ai/rag_chat", json={"message": "根据日记推荐一下食堂"})
             assert rag_resp.status_code == 200, rag_resp.text

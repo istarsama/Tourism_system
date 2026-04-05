@@ -1,7 +1,7 @@
 # 爬虫数据导入系统 - 快速上手
 
 ## 🎯 目标
-将小红书爬取的数据导入到 MySQL 数据库，供 AI RAG 系统检索使用。
+将小红书爬取的数据导入到 PostgreSQL 数据库，供 AI RAG 系统检索使用。
 
 ---
 
@@ -64,7 +64,7 @@ uv run import_crawled_data.py "学一食堂" "图书馆" "运动场" "北邮星�
     ↓ (智能匹配)
 绑定景点ID
     ↓ (保存)
-MySQL数据库
+PostgreSQL数据库
     ↓ (检索)
 AI RAG系统
 ```
@@ -135,10 +135,10 @@ XHS_COOKIE=你的完整cookie字符串
 `.env` 文件中已有的配置：
 
 ```env
-DATABASE_URL=mysql+pymysql://root:root@127.0.0.1:3306/campus_nav
+DATABASE_URL=postgresql+psycopg://campus_user:campus_pass@127.0.0.1:5432/campus_nav
 ```
 
-默认即可，无需修改。
+请先确保 Docker 中的 PostGIS 容器已启动（`docker compose up -d`）。
 
 ---
 

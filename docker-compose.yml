@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: tourism_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: campus_nav
+      POSTGRES_USER: campus_user
+      POSTGRES_PASSWORD: campus_pass
+    ports:
+      # 仅绑定本地回环，避免暴露到公网
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - tourism_pgdata:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - tourism-db-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campus_user -d campus_nav"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  tourism_pgdata:
+    name: tourism_pgdata
+
+networks:
+  tourism-db-net:
+    name: tourism-db-net

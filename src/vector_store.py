@@ -43,7 +43,7 @@ EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY") or OPENAI_COMPAT_API_KEY
 EMBEDDING_VECTOR_SIZE = int(os.getenv("EMBEDDING_VECTOR_SIZE", "256"))
 
 
-def _build_doc_id(doc_type: VectorDocType, mysql_id: int) -> str:
+def _build_doc_id(doc_type: VectorDocType, db_id: int) -> str:
     """
     生成稳定且可复用的文档 ID。
 
@@ -52,8 +52,8 @@ def _build_doc_id(doc_type: VectorDocType, mysql_id: int) -> str:
     - 后续做“增量更新”时可以直接覆盖同一条文档。
     """
     if doc_type == "diary":
-        return f"diary:{mysql_id}"
-    return f"spot:{mysql_id}"
+        return f"diary:{db_id}"
+    return f"spot:{db_id}"
 
 
 class _LocalHashEmbeddings(Embeddings):
@@ -154,7 +154,7 @@ def build_diary_document(diary: Diary) -> Document:
     把 Diary ORM 对象转换为向量文档 Document。
 
     page_content: 给 embedding 模型看的文本（尽量包含检索有价值字段）
-    metadata:     给业务回查用的数据（必须包含 mysql_id + type）
+    metadata:     给业务回查用的数据（必须包含 db_id + type）
     id:           稳定文档 ID（用于幂等 upsert）
     """
     if diary.id is None:
@@ -172,7 +172,7 @@ def build_diary_document(diary: Diary) -> Document:
     )
 
     metadata = {
-        "mysql_id": int(diary.id),
+        "db_id": int(diary.id),
         "type": "diary",
         "scope": diary.scope,
         "spot_id": diary.spot_id,
@@ -206,7 +206,7 @@ def build_national_spot_document(spot: NationalSpot) -> Document:
     )
 
     metadata = {
-        "mysql_id": int(spot.id),
+        "db_id": int(spot.id),
         "type": "national_spot",
         "city": spot.city,
         "spot_type": spot.type,
@@ -252,10 +252,10 @@ def upsert_national_spot(spot: NationalSpot) -> None:
 
 def query_relevant_metadata(query: str, k: int = 6) -> List[Dict[str, Any]]:
     """
-    语义检索入口：只返回 metadata，供 ai.py 再回查 MySQL 详情。
+    语义检索入口：只返回 metadata，供 ai.py 再回查数据库详情。
 
     为什么不直接把 page_content 给 LLM？
-    - 项目已约定“检索 -> mysql_id 回查 -> 再回答”的链路，
+    - 项目已约定“检索 -> db_id 回查 -> 再回答”的链路，
       这样可以保证回答依据的是数据库最新完整数据。
     """
     store = _build_store()
@@ -268,7 +268,7 @@ def query_relevant_metadata(query: str, k: int = 6) -> List[Dict[str, Any]]:
 
 def build_full_index_from_db(session: Session, include_inactive_national_spot: bool = False) -> int:
     """
-    全量初始化索引：读取 MySQL 中的 Diary + NationalSpot，批量写入向量库。
+    全量初始化索引：读取数据库中的 Diary + NationalSpot，批量写入向量库。
 
     参数：
     - include_inactive_national_spot=False：默认只灌入 active 景点。

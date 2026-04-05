@@ -1,14 +1,16 @@
 """
-AI Agent 工具层：定义所有可被 ReAct Agent 调用的工具。
+AI Agent 工具层：为 LangGraph 多智能体定义原生工具。
 
-工具设计原则：
-- name: 唯一英文标识，下划线分隔
-- description: 精准说明用途，让 LLM 自主决策何时调用
-- 工具内部异常统一捕获后返回可读错误文本，不向 Agent 抛出异常
+设计原则：
+- 使用 LangChain @tool 装饰器，支持 .bind_tools([...]) 原生 JSON Schema 工具调用。
+- build_rag_tool 返回只负责内部知识检索的工具（向量检索 + 数据库回查）。
+- build_web_tool 返回只负责外部联网搜索的工具（Tavily）。
+- 工具内部失败通过返回带 [ERROR] 前缀的字符串告知 Agent，不向图节点抛出异常。
 """
 
-from typing import Callable, List, Optional
+from typing import List, Optional
 
+from langchain_core.tools import BaseTool, tool
 from loguru import logger
 from sqlmodel import Session
 
@@ -20,33 +22,26 @@ def _safe_text(value) -> str:
     return str(value) if value is not None else ""
 
 
-class AgentTool:
-    """单个可被 ReAct Agent 调用的工具。"""
-
-    def __init__(self, name: str, description: str, func: Callable[[str], str]) -> None:
-        self.name = name
-        self.description = description
-        self._func = func
-
-    def run(self, query: str) -> str:
-        """执行工具逻辑，内部异常统一转为可读错误信息。"""
-        try:
-            return self._func(query)
-        except Exception as exc:
-            logger.error("工具执行失败 tool={} error={}", self.name, str(exc))
-            return f"[工具执行失败: {str(exc)}]"
-
-
-def build_rag_tool(session: Session) -> AgentTool:
+def build_rag_tool(session: Session) -> BaseTool:
     """
-    内部知识检索工具：向量检索 + MySQL 回查。
+    内部知识检索工具：向量检索 + 数据库回查。
 
-    先用语义向量找到相关文档 ID，再回查 MySQL 拿完整字段，
+    先用语义向量找到相关文档 ID，再回查数据库拿完整字段，
     保证回答依据的是数据库最新完整数据。
     """
 
-    def _rag_func(query: str) -> str:
-        metadatas = query_relevant_metadata(query=query, k=6)
+    @tool
+    def search_internal_knowledge(query: str) -> str:
+        """检索系统内部知识库（用户旅游日记、全国景点信息）。
+        当用户询问校园经验、景点介绍、旅游攻略、日记推荐等内部知识时调用。
+        query 参数为中文检索关键词。
+        """
+        try:
+            metadatas = query_relevant_metadata(query=query, k=6)
+        except Exception as exc:
+            logger.error("RAG 向量检索失败 error={}", str(exc))
+            return f"[ERROR] 向量检索失败: {exc}"
+
         if not metadatas:
             return "未检索到相关内部数据。"
 
@@ -54,17 +49,17 @@ def build_rag_tool(session: Session) -> AgentTool:
         seen: set = set()
 
         for md in metadatas:
-            mysql_id = md.get("mysql_id")
+            db_id = md.get("db_id")
             doc_type = md.get("type")
-            if mysql_id is None or not doc_type:
+            if db_id is None or not doc_type:
                 continue
-            unique_key = f"{doc_type}:{mysql_id}"
+            unique_key = f"{doc_type}:{db_id}"
             if unique_key in seen:
                 continue
             seen.add(unique_key)
 
             if doc_type == "diary":
-                diary = session.get(Diary, int(mysql_id))
+                diary = session.get(Diary, int(db_id))
                 if not diary:
                     continue
                 lines.append(
@@ -79,7 +74,7 @@ def build_rag_tool(session: Session) -> AgentTool:
                     ])
                 )
             elif doc_type == "national_spot":
-                spot = session.get(NationalSpot, int(mysql_id))
+                spot = session.get(NationalSpot, int(db_id))
                 if not spot:
                     continue
                 lines.append(
@@ -94,26 +89,24 @@ def build_rag_tool(session: Session) -> AgentTool:
                     ])
                 )
 
-        return "\n\n".join(lines) if lines else "命中向量结果，但回查 MySQL 未找到可用详情。"
+        return "\n\n".join(lines) if lines else "命中向量结果，但回查数据库未找到可用详情。"
 
-    return AgentTool(
-        name="search_internal_knowledge",
-        description=(
-            "检索系统内部知识库（用户日记、全国景点信息）。"
-            "当用户询问校园经验、景点介绍、旅游攻略、日记推荐等内部知识时使用。"
-        ),
-        func=_rag_func,
-    )
+    return search_internal_knowledge
 
 
-def build_web_tool(tavily_client: Optional[object], current_time: str) -> AgentTool:
+def build_web_tool(tavily_client: Optional[object], current_time: str) -> BaseTool:
     """
     外部联网搜索工具：调用 Tavily 检索实时信息。
 
     若未配置 TAVILY_API_KEY，工具仍可注册但会返回无法搜索的提示。
     """
 
-    def _web_func(query: str) -> str:
+    @tool
+    def search_web_knowledge(query: str) -> str:
+        """联网检索实时外部信息（天气、新闻、交通动态等）。
+        当用户询问天气、新闻、实时动态、外部时事等内部数据库没有的信息时调用。
+        query 参数为中文检索关键词。
+        """
         if not tavily_client:
             return "未配置 TAVILY_API_KEY，无法进行联网搜索。"
         try:
@@ -125,32 +118,14 @@ def build_web_tool(tavily_client: Optional[object], current_time: str) -> AgentT
             results = response.get("results", [])
             if not results:
                 return "联网搜索未找到可用结果。"
-            lines = []
+            parts = []
             for idx, item in enumerate(results, start=1):
-                lines.append(
+                parts.append(
                     f"【联网来源{idx}】{item.get('content', '')} (链接: {item.get('url', '')})"
                 )
-            return "\n".join(lines)
+            return "\n".join(parts)
         except Exception as exc:
             logger.error("联网搜索失败 error={}", str(exc))
-            return f"联网搜索失败: {str(exc)}"
+            return f"[ERROR] 联网搜索失败: {exc}"
 
-    return AgentTool(
-        name="search_web_knowledge",
-        description=(
-            "联网检索实时外部信息。"
-            "当用户询问天气、新闻、实时动态、外部时事等内部数据库没有的信息时使用。"
-        ),
-        func=_web_func,
-    )
-
-
-def build_all_tools(
-    session: Session,
-    tavily_client: Optional[object],
-    current_time: str,
-) -> List[AgentTool]:
-    """组合当前请求可用的全部工具列表。"""
-    tools: List[AgentTool] = [build_rag_tool(session)]
-    tools.append(build_web_tool(tavily_client, current_time))
-    return tools
+    return search_web_knowledge
