@@ -10,6 +10,7 @@ from models import (
     POIGeometry,
     RouteCache,
     NationalSpot,
+    NationalSpotXHSNote,
     MapConfig,
 )
 

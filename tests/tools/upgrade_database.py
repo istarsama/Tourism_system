@@ -10,7 +10,7 @@ import os
 import sys
 
 from sqlalchemy import inspect
-from sqlmodel import create_engine, text
+from sqlmodel import SQLModel, create_engine, text
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.join(CURRENT_DIR, "..", "..")
@@ -19,6 +19,24 @@ if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
 
 from database import DATABASE_URL
+import models  # noqa: F401  # 导入模型以注册 SQLModel metadata
+
+
+def _table_exists(engine, table_name: str) -> bool:
+    """方言无关的表存在性检测。"""
+
+    insp = inspect(engine)
+    return table_name in insp.get_table_names()
+
+
+def _ensure_column(conn, engine, table_name: str, column_name: str, definition_sql: str) -> None:
+    """若列不存在，则执行 ALTER TABLE ADD COLUMN。"""
+
+    if _column_exists(conn, engine, table_name, column_name):
+        print(f"   ✅ {table_name}.{column_name} 已存在，跳过")
+        return
+    print(f"   📝 新增 {table_name}.{column_name} 字段...")
+    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition_sql}"))
 
 
 def _column_exists(conn, engine, table_name: str, column_name: str) -> bool:
@@ -79,7 +97,26 @@ def upgrade_diary_table():
             else:
                 print("   ✅ national_spot_id 字段已存在，跳过")
 
+            if _table_exists(engine, "national_spot"):
+                print("\n🌸 检查 national_spot 表的小红书扩展字段...")
+                _ensure_column(conn, engine, "national_spot", "province", "VARCHAR(100)")
+                _ensure_column(conn, engine, "national_spot", "flower_type", "VARCHAR(100)")
+                _ensure_column(conn, engine, "national_spot", "best_season", "VARCHAR(100)")
+                _ensure_column(conn, engine, "national_spot", "search_keywords_json", "TEXT NOT NULL DEFAULT '[]'")
+                _ensure_column(conn, engine, "national_spot", "xhs_query", "VARCHAR(255)")
+                _ensure_column(conn, engine, "national_spot", "source", "VARCHAR(50) NOT NULL DEFAULT 'seed'")
+                _ensure_column(conn, engine, "national_spot", "xhs_fetch_status", "VARCHAR(30) NOT NULL DEFAULT 'pending'")
+                _ensure_column(conn, engine, "national_spot", "xhs_fetch_message", "TEXT")
+                _ensure_column(conn, engine, "national_spot", "xhs_cookie_needs_refresh", "BOOLEAN NOT NULL DEFAULT FALSE")
+                _ensure_column(conn, engine, "national_spot", "xhs_note_count", "INTEGER NOT NULL DEFAULT 0")
+                _ensure_column(conn, engine, "national_spot", "xhs_last_fetched_at", "TIMESTAMP")
+            else:
+                print("\n⚠️ national_spot 表不存在，跳过字段升级；后续会用 create_all() 自动建表。")
+
             conn.commit()
+
+            # 新表直接交给 SQLModel metadata 创建，避免重复手写 CREATE TABLE 语句。
+            SQLModel.metadata.create_all(engine)
             print("✅ 表结构升级成功！")
 
             # 验证修改 — 方言无关

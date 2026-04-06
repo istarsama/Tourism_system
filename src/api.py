@@ -1,6 +1,8 @@
 import sys
 import os
+from datetime import datetime
 from time import perf_counter
+from datetime import datetime
 # 把当前文件所在的目录 (src) 加入到 Python 查找路径中，这样就能找到 auth, diary 等模块了
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI, APIRouter, HTTPException, Depends
@@ -18,7 +20,7 @@ from thefuzz import process  # 用于模糊搜索
 # 导入我们自己写的模块
 import auth               # 身份认证模块
 import diary              # 日记模块 (刚才写的)
-from models import CampusGraph, NationalSpot, MapConfig, Diary
+from models import CampusGraph, NationalSpot, MapConfig, Diary, NationalSpotXHSNote
 from crawler import XHSCrawler
 from osm_service import OSMService
 from poi_service import sync_campus_graph_to_poi, get_or_create_virtual_poi
@@ -225,6 +227,9 @@ def search_spots(
                 "score": score,
                 "latitude": spot.latitude,
                 "longitude": spot.longitude,
+                "xhs_note_count": spot.xhs_note_count,
+                "xhs_fetch_status": spot.xhs_fetch_status,
+                "xhs_cookie_needs_refresh": spot.xhs_cookie_needs_refresh,
                 "scope": "national",
             }
         )
@@ -259,6 +264,17 @@ class MapModeResponse(BaseModel):
     tile_layer: Optional[TileLayerResponse]
 
 
+class NationalSpotXHSPreviewResponse(BaseModel):
+    note_id: str
+    title: str
+    content_preview: str
+    thumbnail_url: Optional[str]
+    xhs_url: str
+    author_name: Optional[str]
+    author_id: Optional[str]
+    likes: int
+
+
 class NationalSpotMapResponse(BaseModel):
     id: int
     name: str
@@ -267,9 +283,19 @@ class NationalSpotMapResponse(BaseModel):
     longitude: float
     description: Optional[str]
     city: str
+    province: Optional[str]
+    flower_type: Optional[str]
+    best_season: Optional[str]
     rating: float
     diary_count: int
     diary_api: str
+    xhs_query: Optional[str]
+    xhs_note_count: int
+    xhs_fetch_status: str
+    xhs_fetch_message: Optional[str]
+    xhs_cookie_needs_refresh: bool
+    xhs_last_fetched_at: Optional[datetime]
+    xhs_notes_preview: List[NationalSpotXHSPreviewResponse]
 
 @app.post("/plan/xhs_trip")
 async def plan_xhs_trip(request: XHSPlanRequest, session: Session = Depends(get_session)):
@@ -353,6 +379,12 @@ def get_national_spots(
     limit: int = Query(default=200, ge=1, le=500),
     session: Session = Depends(get_session),
 ):
+    """
+    返回全国景点地图点位及其小红书预览元数据。
+
+    这里保持原有 diary_count / diary_api 字段不变，并以新增字段的方式扩展，
+    这样现有 OSM 前端链路不会被破坏，后续点击景点即可直接展示帖子缩略图与跳转链接。
+    """
     query = select(NationalSpot).where(NationalSpot.is_active == True)
     if city:
         query = query.where(NationalSpot.city == city)
@@ -382,6 +414,31 @@ def get_national_spots(
             if national_spot_id is not None
         }
 
+    note_preview_map: dict[int, list[dict]] = {}
+    if spot_ids:
+        preview_rows = session.exec(
+            select(NationalSpotXHSNote)
+            .where(NationalSpotXHSNote.national_spot_id.in_(spot_ids))
+            .order_by(
+                NationalSpotXHSNote.national_spot_id,
+                NationalSpotXHSNote.rank_order,
+                NationalSpotXHSNote.id,
+            )
+        ).all()
+        for preview in preview_rows:
+            note_preview_map.setdefault(preview.national_spot_id, []).append(
+                {
+                    "note_id": preview.xhs_note_id,
+                    "title": preview.title,
+                    "content_preview": preview.content_preview,
+                    "thumbnail_url": preview.thumbnail_url,
+                    "xhs_url": preview.xhs_url,
+                    "author_name": preview.author_name,
+                    "author_id": preview.author_id,
+                    "likes": preview.liked_count,
+                }
+            )
+
     return [
         {
             "id": spot.id,
@@ -391,9 +448,19 @@ def get_national_spots(
             "longitude": spot.longitude,
             "description": spot.description,
             "city": spot.city,
+            "province": spot.province,
+            "flower_type": spot.flower_type,
+            "best_season": spot.best_season,
             "rating": spot.rating,
             "diary_count": diary_count_map.get(spot.id, 0),
             "diary_api": f"/diaries/spot/{spot.id}?scope=national",
+            "xhs_query": spot.xhs_query,
+            "xhs_note_count": spot.xhs_note_count,
+            "xhs_fetch_status": spot.xhs_fetch_status,
+            "xhs_fetch_message": spot.xhs_fetch_message,
+            "xhs_cookie_needs_refresh": spot.xhs_cookie_needs_refresh,
+            "xhs_last_fetched_at": spot.xhs_last_fetched_at,
+            "xhs_notes_preview": note_preview_map.get(spot.id, []),
         }
         for spot in spots
     ]

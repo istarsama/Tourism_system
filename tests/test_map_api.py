@@ -19,7 +19,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH.replace('\\', '/')}"
 
 import api
 from database import engine
-from models import NationalSpot
+from models import NationalSpot, NationalSpotXHSNote
 
 
 def seed_national_spots() -> None:
@@ -32,15 +32,42 @@ def seed_national_spots() -> None:
             )
         ).first()
         if not existing:
+            existing = NationalSpot(
+                name="测试景点-故宫",
+                type="历史遗迹",
+                latitude=39.916345,
+                longitude=116.397155,
+                description="测试数据",
+                city="北京",
+                province="北京",
+                flower_type="海棠",
+                best_season="4月",
+                xhs_query="北京 故宫 海棠",
+                xhs_fetch_status="success",
+                xhs_fetch_message="已同步 1 条小红书帖子预览。",
+                xhs_cookie_needs_refresh=False,
+                xhs_note_count=1,
+                xhs_last_fetched_at=now,
+                rating=4.9,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(existing)
+            session.commit()
+            session.refresh(existing)
             session.add(
-                NationalSpot(
-                    name="测试景点-故宫",
-                    type="历史遗迹",
-                    latitude=39.916345,
-                    longitude=116.397155,
-                    description="测试数据",
-                    city="北京",
-                    rating=4.9,
+                NationalSpotXHSNote(
+                    national_spot_id=existing.id,
+                    xhs_note_id="xhs-map-api-1",
+                    title="故宫海棠拍照攻略",
+                    content_preview="春天在故宫看海棠真的很出片。",
+                    thumbnail_url="https://example.com/thumbnail.jpg",
+                    xhs_url="https://www.xiaohongshu.com/explore/xhs-map-api-1",
+                    author_name="测试作者",
+                    author_id="author_1",
+                    liked_count=128,
+                    image_urls_json='["https://example.com/thumbnail.jpg"]',
+                    rank_order=0,
                     created_at=now,
                     updated_at=now,
                 )
@@ -81,6 +108,11 @@ def main():
         assert data[0]["city"] == "北京"
         assert "diary_count" in data[0]
         assert "diary_api" in data[0]
+        assert data[0]["xhs_note_count"] == 1
+        assert data[0]["xhs_fetch_status"] == "success"
+        assert data[0]["xhs_cookie_needs_refresh"] is False
+        assert data[0]["xhs_notes_preview"][0]["thumbnail_url"] == "https://example.com/thumbnail.jpg"
+        assert data[0]["xhs_notes_preview"][0]["xhs_url"].startswith("https://www.xiaohongshu.com/explore/")
 
     print("✅ 地图模式 API 测试通过")
 

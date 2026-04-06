@@ -76,6 +76,8 @@ def main():
         assert target is not None
         assert target["diary_count"] >= 1
         assert target["diary_api"] == f"/diaries/spot/{spot_id}?scope=national"
+        assert "xhs_fetch_status" in target
+        assert "xhs_notes_preview" in target
 
     print("✅ 全国景点与日记联动测试通过")
 

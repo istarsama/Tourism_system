@@ -202,7 +202,13 @@ class RouteCache(SQLModel, table=True):
 
 
 class NationalSpot(SQLModel, table=True):
-    """全国景点表：用于 OSM/全国地图模式数据源"""
+    """
+    全国景点表：用于 OSM/全国地图模式数据源。
+
+    这里额外保留赏花主题与小红书抓取元数据，原因有两个：
+    1. 导入脚本需要在“景点落库”和“帖子抓取”之间保留稳定状态，避免抓取失败时整条景点数据丢失。
+    2. 前端全国地图模式希望直接消费帖子预览，因此景点主表需要知道当前抓取是否成功、是否需要更新 Cookie。
+    """
     __tablename__ = "national_spot"
     __table_args__ = (
         UniqueConstraint("name", "city", name="uq_national_spot_name_city"),
@@ -215,8 +221,49 @@ class NationalSpot(SQLModel, table=True):
     longitude: float = Field(index=True)
     description: Optional[str] = None
     city: str = Field(index=True)
+    province: Optional[str] = Field(default=None, index=True)
+    flower_type: Optional[str] = Field(default=None, index=True)
+    best_season: Optional[str] = None
+    search_keywords_json: str = Field(default="[]")
+    xhs_query: Optional[str] = None
+    source: str = Field(default="seed", index=True)
     rating: float = Field(default=4.5)
     is_active: bool = Field(default=True, index=True)
+    xhs_fetch_status: str = Field(default="pending", index=True)
+    xhs_fetch_message: Optional[str] = None
+    xhs_cookie_needs_refresh: bool = Field(default=False, index=True)
+    xhs_note_count: int = Field(default=0)
+    xhs_last_fetched_at: Optional[datetime] = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
+class NationalSpotXHSNote(SQLModel, table=True):
+    """
+    全国景点关联的小红书帖子预览表。
+
+    只存前端立即可用的预览字段，不直接保存完整抓取结果：
+    - 降低接口响应体与数据库膨胀风险
+    - 保持“地图点位 -> 帖子缩略图/文案/跳转链接”的最短链路
+    """
+    __tablename__ = "national_spot_xhs_note"
+    __table_args__ = (
+        UniqueConstraint("national_spot_id", "xhs_note_id", name="uq_national_spot_xhs_note"),
+        Index("ix_national_spot_xhs_note_rank", "national_spot_id", "rank_order"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    national_spot_id: int = Field(foreign_key="national_spot.id", index=True)
+    xhs_note_id: str = Field(index=True)
+    title: str
+    content_preview: str = Field(default="")
+    thumbnail_url: Optional[str] = None
+    xhs_url: str
+    author_name: Optional[str] = None
+    author_id: Optional[str] = None
+    liked_count: int = Field(default=0)
+    image_urls_json: str = Field(default="[]")
+    rank_order: int = Field(default=0)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 

@@ -1,11 +1,8 @@
 import argparse
-import json
 import os
 import sys
-from datetime import datetime
-from typing import Any
 
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.join(CURRENT_DIR, "..")
@@ -14,73 +11,14 @@ if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
 
 from database import engine, init_db
-from models import NationalSpot
-
-
-def _load_json(path: str) -> list[dict[str, Any]]:
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    if not isinstance(data, list):
-        raise ValueError("景点种子文件格式错误：根节点必须是数组。")
-    return data
-
-
-def _required_fields() -> set[str]:
-    return {"name", "type", "latitude", "longitude", "city"}
+from national_spot_importer import import_national_spots_from_path
 
 
 def init_national_spots(input_path: str) -> dict[str, int]:
-    dataset = _load_json(input_path)
-    stats = {"created": 0, "updated": 0, "skipped": 0}
-    now = datetime.now()
+    """仅导入全国景点基础数据，不触发小红书抓取。"""
 
     with Session(engine) as session:
-        for item in dataset:
-            if not isinstance(item, dict):
-                stats["skipped"] += 1
-                continue
-            if not _required_fields().issubset(item.keys()):
-                stats["skipped"] += 1
-                continue
-
-            existing = session.exec(
-                select(NationalSpot).where(
-                    NationalSpot.name == str(item["name"]),
-                    NationalSpot.city == str(item["city"]),
-                )
-            ).first()
-
-            if existing:
-                existing.type = str(item["type"])
-                existing.latitude = float(item["latitude"])
-                existing.longitude = float(item["longitude"])
-                existing.description = item.get("description")
-                existing.rating = float(item.get("rating", existing.rating or 4.5))
-                existing.is_active = bool(item.get("is_active", True))
-                existing.updated_at = now
-                session.add(existing)
-                stats["updated"] += 1
-                continue
-
-            session.add(
-                NationalSpot(
-                    name=str(item["name"]),
-                    type=str(item["type"]),
-                    latitude=float(item["latitude"]),
-                    longitude=float(item["longitude"]),
-                    description=item.get("description"),
-                    city=str(item["city"]),
-                    rating=float(item.get("rating", 4.5)),
-                    is_active=bool(item.get("is_active", True)),
-                    created_at=now,
-                    updated_at=now,
-                )
-            )
-            stats["created"] += 1
-
-        session.commit()
-
-    return stats
+        return import_national_spots_from_path(session, input_path, fetch_xhs=False)
 
 
 def main():
@@ -95,7 +33,10 @@ def main():
     init_db()
     stats = init_national_spots(args.input)
     print(
-        f"✅ 导入完成：新增 {stats['created']} 条，更新 {stats['updated']} 条，跳过 {stats['skipped']} 条。"
+        "✅ 导入完成："
+        f"新增 {stats['created']} 条，"
+        f"更新 {stats['updated']} 条，"
+        f"跳过 {stats['skipped']} 条。"
     )
 
 

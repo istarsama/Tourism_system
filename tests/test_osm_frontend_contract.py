@@ -20,7 +20,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH.replace('\\', '/')}"
 import api
 import diary
 from database import engine
-from models import NationalSpot, User
+from models import NationalSpot, NationalSpotXHSNote, User
 
 
 def seed_user_and_spots() -> tuple[int, int, int]:
@@ -56,6 +56,30 @@ def seed_user_and_spots() -> tuple[int, int, int]:
         session.refresh(user)
         session.refresh(start_spot)
         session.refresh(end_spot)
+        session.add(
+            NationalSpotXHSNote(
+                national_spot_id=start_spot.id,
+                xhs_note_id="xhs-osm-1",
+                title="前端联调故宫赏花预览",
+                content_preview="这里用于验证 OSM 模式能拿到帖子预览。",
+                thumbnail_url="https://example.com/osm-preview.jpg",
+                xhs_url="https://www.xiaohongshu.com/explore/xhs-osm-1",
+                author_name="联调作者",
+                author_id="osm_author",
+                liked_count=256,
+                image_urls_json='["https://example.com/osm-preview.jpg"]',
+                rank_order=0,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        start_spot.xhs_query = "北京 故宫 赏花"
+        start_spot.xhs_fetch_status = "success"
+        start_spot.xhs_fetch_message = "已同步 1 条小红书帖子预览。"
+        start_spot.xhs_note_count = 1
+        start_spot.xhs_last_fetched_at = now
+        session.add(start_spot)
+        session.commit()
         return user.id, start_spot.id, end_spot.id
 
 
@@ -122,6 +146,10 @@ def main():
             assert start_spot["city"] == "北京"
             assert start_spot["diary_count"] >= 1
             assert start_spot["diary_api"] == f"/diaries/spot/{start_spot_id}?scope=national"
+            assert start_spot["xhs_note_count"] == 1
+            assert start_spot["xhs_fetch_status"] == "success"
+            assert start_spot["xhs_notes_preview"][0]["thumbnail_url"] == "https://example.com/osm-preview.jpg"
+            assert start_spot["xhs_notes_preview"][0]["xhs_url"] == "https://www.xiaohongshu.com/explore/xhs-osm-1"
 
             search_resp = client.get(
                 "/spots/search",
@@ -139,6 +167,8 @@ def main():
             assert search_data[0]["id"] == start_spot_id
             assert "latitude" in search_data[0]
             assert "longitude" in search_data[0]
+            assert search_data[0]["xhs_note_count"] == 1
+            assert search_data[0]["xhs_fetch_status"] == "success"
 
             navigate_resp = client.post(
                 "/navigate/osm",

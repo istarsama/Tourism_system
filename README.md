@@ -171,6 +171,13 @@ http://127.0.0.1:8000
 uv run tools/init_national_spots.py
 ```
 
+初始化全国赏花景点并抓取小红书预览：
+
+```bash
+uv run python tools/import_national_flower_spots.py
+uv run python tools/crawl_flower_spots.py --city 武汉
+```
+
 初始化向量库：
 
 ```bash
@@ -187,6 +194,8 @@ uv run python tools/init_vector_db.py
 | 打开测试工具箱 | `uv run python run_tests.py` |
 | 查看数据库 | `uv run python tools/view_database.py` |
 | 初始化全国景点 | `uv run tools/init_national_spots.py` |
+| 初始化全国赏花景点并抓取小红书预览 | `uv run python tools/import_national_flower_spots.py` |
+| 按城市抓取赏花景点 | `uv run python tools/crawl_flower_spots.py --city 武汉` |
 | 初始化向量库 | `uv run python tools/init_vector_db.py` |
 
 ## API 概览
