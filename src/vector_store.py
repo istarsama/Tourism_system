@@ -165,6 +165,7 @@ def build_diary_document(diary: Diary) -> Document:
             "类型: 日记",
             f"标题: {_safe_text(diary.title)}",
             f"范围: {_safe_text(diary.scope)}",
+            f"统一地点ID: {_safe_text(diary.poi_id)}",
             f"内容: {_safe_text(diary.content)}",
             f"评分: {_safe_text(diary.score)}",
             f"浏览量: {_safe_text(diary.view_count)}",
@@ -174,6 +175,7 @@ def build_diary_document(diary: Diary) -> Document:
     metadata = {
         "db_id": int(diary.id),
         "type": "diary",
+        "poi_id": diary.poi_id,
         "scope": diary.scope,
         "spot_id": diary.spot_id,
         "national_spot_id": diary.national_spot_id,

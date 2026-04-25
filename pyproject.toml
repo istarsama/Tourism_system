@@ -32,4 +32,13 @@ dependencies = [
     "tavily-python>=0.7.19",
     "thefuzz>=0.22.1",
     "uvicorn>=0.40.0",
+    "alembic>=1.18.4",
+    "pytest>=9.0.3",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "tools"]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore:The default datetime adapter is deprecated:DeprecationWarning",
 ]

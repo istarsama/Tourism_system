@@ -80,22 +80,43 @@ class FakeLLMResponse:
 
 class FakeLLM:
     """
-    ReAct Agent 兼容的假大模型：
-    - 第一次调用（无 Observation）：返回调用 RAG 工具的 Action 格式
-    - 后续调用（含 Observation）：返回包含断言文本的 Final Answer
+    LangGraph Tool Calling 兼容的假大模型：
+    - 第一次普通 invoke：路由到 rag
+    - bind_tools 后第一次 invoke：调用 search_internal_knowledge
+    - bind_tools 后第二次 invoke：返回最终回答
     """
 
+    def __init__(self):
+        self._route_called = False
+
     def invoke(self, messages):
-        text = str(messages)
-        if "Observation:" in text:
-            return FakeLLMResponse(
-                "Thought: 已获得内部检索结果，可以回答。\nFinal Answer: 这是测试用RAG回答。"
-            )
-        return FakeLLMResponse(
-            "Thought: 需要检索系统内部知识。\n"
-            "Action: search_internal_knowledge\n"
-            "Action Input: 食堂推荐"
-        )
+        if not self._route_called:
+            self._route_called = True
+            return FakeLLMResponse("rag")
+        return FakeLLMResponse("这是测试用RAG回答。")
+
+    def bind_tools(self, tools):
+        class _WithTools:
+            def __init__(self):
+                self._called = False
+
+            def invoke(self, messages):
+                if not self._called:
+                    self._called = True
+                    response = FakeLLMResponse("")
+                    response.tool_calls = [
+                        {
+                            "name": "search_internal_knowledge",
+                            "args": {"query": "食堂推荐"},
+                            "id": "call_vector_rag",
+                        }
+                    ]
+                    return response
+                response = FakeLLMResponse("这是测试用RAG回答。")
+                response.tool_calls = []
+                return response
+
+        return _WithTools()
 def seed_base_data() -> tuple[int, int]:
     """
     种子数据：

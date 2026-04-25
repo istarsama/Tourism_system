@@ -11,6 +11,7 @@ from loguru import logger
 from database import get_session
 from models import Diary, User, Comment, NationalSpot  # 👈 确保这里导入了 Comment 模型
 from auth import get_current_user
+from poi_service import resolve_diary_poi_id
 from vector_store import upsert_diary
 
 # 创建路由器
@@ -49,6 +50,7 @@ class CommentRead(BaseModel):
 # 2. 我们返回给前端的数据格式 (显示日记用)
 class DiaryRead(BaseModel):
     id: int
+    poi_id: Optional[int]
     spot_id: Optional[int]
     scope: str
     national_spot_id: Optional[int]
@@ -66,6 +68,7 @@ def _build_diary_read(session: Session, diary: Diary) -> DiaryRead:
     user_name = user.username if user else "未知用户"
     return DiaryRead(
         id=diary.id,
+        poi_id=diary.poi_id,
         spot_id=diary.spot_id,
         scope=diary.scope,
         national_spot_id=diary.national_spot_id,
@@ -122,8 +125,16 @@ def create_diary(
     media_json_str = json.dumps(diary_data.media_files)
     
     # 2. 创建数据库对象
+    poi_id = resolve_diary_poi_id(
+        session,
+        scope=diary_data.scope,
+        spot_id=spot_id,
+        national_spot_id=national_spot_id,
+    )
+
     new_diary = Diary(
         user_id=current_user.id,        # 自动填入当前登录用户的ID
+        poi_id=poi_id,
         spot_id=spot_id,
         scope=diary_data.scope,
         national_spot_id=national_spot_id,

@@ -32,7 +32,7 @@ import diary
 import upload
 import ai
 from database import init_db, engine
-from poi_service import sync_campus_graph_to_poi
+from poi_service import backfill_diary_poi_ids, sync_campus_graph_to_poi, sync_national_spots_to_poi
 from services.map_service import load_and_set_graph
 from utils import get_data_path
 
@@ -71,6 +71,9 @@ async def lifespan(app: FastAPI):
 
     with Session(engine) as session:
         ensure_default_map_configs(session)
+        national_stats = sync_national_spots_to_poi(session)
+        if any(national_stats.values()):
+            logger.info("✅ 全国 POI 同步完成: {}", national_stats)
 
     try:
         path = get_data_path()
@@ -79,6 +82,9 @@ async def lifespan(app: FastAPI):
         with Session(engine) as session:
             stats = sync_campus_graph_to_poi(session, graph)
             logger.info("✅ POI 同步完成: {}", stats)
+            backfill_stats = backfill_diary_poi_ids(session)
+            if any(backfill_stats.values()):
+                logger.info("✅ 日记 POI 回填完成: {}", backfill_stats)
     except Exception as e:
         logger.error("❌ 地图加载失败: {}", e)
 

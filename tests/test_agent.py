@@ -18,6 +18,7 @@ import shutil
 import sys
 from datetime import datetime
 
+import pytest
 from fastapi.testclient import TestClient
 from langchain_core.embeddings import Embeddings
 from langchain_core.messages import AIMessage
@@ -219,6 +220,15 @@ def check(name: str, condition: bool, detail: str = ""):
     else:
         print(f"  ❌ {name}" + (f" — {detail}" if detail else ""))
         FAIL += 1
+    assert condition, detail or name
+
+
+@pytest.fixture
+def client():
+    vector_store._build_embeddings = lambda: FakeEmbeddings()
+    SQLModel.metadata.create_all(engine)
+    with TestClient(api.app) as test_client:
+        yield test_client
 
 
 def test_chat_route(client: TestClient):

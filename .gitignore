@@ -5,6 +5,8 @@ __pycache__/
 # uv 和 虚拟环境 (绝对不能上传这个！)
 .venv/
 venv/
+.uv-cache/
+.pytest_cache/
 
 # 环境变量 (防止密钥泄露)
 .env
