@@ -5,9 +5,19 @@ __pycache__/
 # uv 和 虚拟环境 (绝对不能上传这个！)
 .venv/
 venv/
+.uv-cache/
+.pytest_cache/
 
 # 环境变量 (防止密钥泄露)
 .env
+
+# 测试运行产物
+tests/tmp_*.db
+tests/tmp_*_chroma/
+tests/tmp_chroma_test/
+tests/tmp_agent_chroma/
+tests/**/__pycache__/
+data/chroma/
 
 # 操作系统生成的垃圾文件
 .DS_Store

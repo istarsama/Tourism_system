@@ -35,6 +35,10 @@ _NATIONAL_SPOT_COMPAT_COLUMNS: tuple[tuple[str, str], ...] = (
     ("xhs_last_fetched_at", "TIMESTAMP"),
 )
 
+_DIARY_COMPAT_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("poi_id", "INTEGER"),
+)
+
 
 def _ensure_compat_schema() -> None:
     """
@@ -47,21 +51,33 @@ def _ensure_compat_schema() -> None:
 
     existing_tables = set(inspect(engine).get_table_names())
     with engine.begin() as connection:
-        if "national_spot" not in existing_tables:
-            return
+        if "national_spot" in existing_tables:
+            existing_columns = {
+                column["name"]
+                for column in inspect(connection).get_columns("national_spot")
+            }
+            for column_name, definition_sql in _NATIONAL_SPOT_COMPAT_COLUMNS:
+                if column_name in existing_columns:
+                    continue
 
-        existing_columns = {
-            column["name"]
-            for column in inspect(connection).get_columns("national_spot")
-        }
-        for column_name, definition_sql in _NATIONAL_SPOT_COMPAT_COLUMNS:
-            if column_name in existing_columns:
-                continue
+                logger.warning("检测到旧版表结构，正在补齐字段 national_spot.{}", column_name)
+                connection.execute(
+                    text(f"ALTER TABLE national_spot ADD COLUMN {column_name} {definition_sql}")
+                )
 
-            logger.warning("检测到旧版表结构，正在补齐字段 national_spot.{}", column_name)
-            connection.execute(
-                text(f"ALTER TABLE national_spot ADD COLUMN {column_name} {definition_sql}")
-            )
+        if "diary" in existing_tables:
+            existing_columns = {
+                column["name"]
+                for column in inspect(connection).get_columns("diary")
+            }
+            for column_name, definition_sql in _DIARY_COMPAT_COLUMNS:
+                if column_name in existing_columns:
+                    continue
+
+                logger.warning("检测到旧版表结构，正在补齐字段 diary.{}", column_name)
+                connection.execute(
+                    text(f"ALTER TABLE diary ADD COLUMN {column_name} {definition_sql}")
+                )
 
 def init_db():
     """

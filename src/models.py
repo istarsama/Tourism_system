@@ -86,6 +86,7 @@ class Diary(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True) # 日记ID
     
     user_id: int = Field(foreign_key="user.id") # 作者是谁 (关联User表)
+    poi_id: Optional[int] = Field(default=None, foreign_key="poi.id", index=True) # 统一地点ID（兼容新POI体系）
     spot_id: Optional[int] = Field(default=None, index=True) # 校园景点ID（campus 模式）
     scope: str = Field(default="campus", index=True) # 日记范围: campus / national
     national_spot_id: Optional[int] = Field(default=None, foreign_key="national_spot.id", index=True)
