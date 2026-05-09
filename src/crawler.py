@@ -1,7 +1,6 @@
 import json
 import os
 import sys
-import subprocess
 from typing import List, Dict, Any
 from sqlmodel import Session
 from models import Diary, User
@@ -97,22 +96,43 @@ class XHSCrawler:
                     print("   💡 提示: 可能是 Cookie 过期了，请重新复制浏览器 Cookie 到 .env")
                 return []
 
-            # 4. 数据清洗 (Mapping) - 保持不变
+            # 4. 数据清洗 (Mapping)
             formatted_notes = []
             for item in note_list:
                 images = item.get('image_list', [])
                 if isinstance(images, str):
-                    images = images.split(',')
+                    images = [img.strip() for img in images.split(',') if img.strip()]
+                elif not isinstance(images, list):
+                    images = []
+
+                user_info = item.get('user', {})
+                if not isinstance(user_info, dict):
+                    user_info = {}
+
+                nickname = item.get('nickname') or user_info.get('nickname') or '未知用户'
+                user_id = item.get('user_id') or user_info.get('user_id') or ''
+
+                likes = 0
+                for key in ('liked_count', 'likes', 'likedCount'):
+                    raw_likes = item.get(key)
+                    if raw_likes is None:
+                        continue
+                    try:
+                        likes = int(raw_likes)
+                        break
+                    except (TypeError, ValueError):
+                        continue
                 
                 formatted_notes.append({
                     "note_id": item.get('note_id', ''),
+                    "note_url": item.get('note_url') or item.get('url', ''),
                     "title": item.get('title', '无标题'),
                     "desc": item.get('desc', ''),
                     "user": {
-                        "nickname": item.get('user', {}).get('nickname', '未知用户'),
-                        "id": item.get('user', {}).get('user_id', '')
+                        "nickname": nickname,
+                        "id": user_id
                     },
-                    "likes": int(item.get('liked_count', 0)),
+                    "likes": likes,
                     "images": images
                 })
             

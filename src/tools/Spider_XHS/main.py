@@ -32,22 +32,40 @@ class Data_Spider():
 
     def spider_some_note(self, notes: list, cookies_str: str, base_path: dict, save_choice: str, excel_name: str = '', proxies=None):
         """
-        爬取一些笔记的信息 (已修改：返回爬取到的数据列表)
+        爬取一些笔记的信息，并按 save_choice 保存媒体/Excel。
+
+        兼容说明：
+        - 旧版 Spider_XHS 主要负责下载媒体和保存 Excel；
+        - 项目接入后需要把 note_list 返回给业务层入库；
+        - 因此这里同时保留“保存副作用”和“返回数据列表”，避免出现能爬到但不下载/不导出的情况。
         """
         if (save_choice == 'all' or save_choice == 'excel') and excel_name == '':
             raise ValueError('excel_name 不能为空')
         
-        note_list = [] # 这里存储的是爬取到的详细数据字典
+        note_list = []
         for note_url in notes:
             success, msg, note_info = self.spider_note(note_url, cookies_str, proxies)
             if note_info is not None and success:
                 note_list.append(note_info)
         
-        # ... (保留原有的下载图片/保存Excel逻辑，或者如果不需要存文件可以注释掉) ...
-        # for note_info in note_list: ...
-        # if save_choice == ...: ...
+        if save_choice in ['all', 'media', 'media-image', 'media-video']:
+            media_path = base_path.get('media') if isinstance(base_path, dict) else None
+            if not media_path:
+                raise ValueError("base_path 缺少 media 保存路径")
+            os.makedirs(media_path, exist_ok=True)
+            for note_info in note_list:
+                try:
+                    download_note(note_info, media_path, save_choice)
+                except Exception as exc:
+                    logger.warning(f"下载笔记媒体失败 note_id={note_info.get('note_id')}: {exc}")
 
-        # ✅ 新增：把数据列表返回出去！
+        if save_choice in ['all', 'excel']:
+            excel_path = base_path.get('excel') if isinstance(base_path, dict) else None
+            if not excel_path:
+                raise ValueError("base_path 缺少 excel 保存路径")
+            os.makedirs(excel_path, exist_ok=True)
+            save_to_xlsx(note_list, os.path.join(excel_path, f'{excel_name}.xlsx'), 'note')
+
         return note_list
 
     def spider_user_all_note(self, user_url: str, cookies_str: str, base_path: dict, save_choice: str, excel_name: str = '', proxies=None):

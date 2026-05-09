@@ -192,18 +192,32 @@ def save_to_xlsx(datas, file_path, type='note'):
     logger.info(f'数据保存至 {file_path}')
 
 def download_media(path, name, url, type):
+    if not url:
+        raise ValueError("下载地址为空")
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Referer": "https://www.xiaohongshu.com/",
+    }
     if type == 'image':
-        content = requests.get(url).content
+        response = requests.get(url, headers=headers, timeout=20)
+        response.raise_for_status()
+        content = response.content
         with open(path + '/' + name + '.jpg', mode="wb") as f:
             f.write(content)
     elif type == 'video':
-        res = requests.get(url, stream=True)
+        res = requests.get(url, headers=headers, stream=True, timeout=30)
+        res.raise_for_status()
         size = 0
         chunk_size = 1024 * 1024
         with open(path + '/' + name + '.mp4', mode="wb") as f:
             for data in res.iter_content(chunk_size=chunk_size):
-                f.write(data)
-                size += len(data)
+                if data:
+                    f.write(data)
+                    size += len(data)
 
 def save_user_detail(user, path):
     with open(f'{path}/detail.txt', mode="w", encoding="utf-8") as f:
