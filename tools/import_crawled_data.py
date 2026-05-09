@@ -250,7 +250,13 @@ def clean_and_format_note(note: dict) -> dict:
     # 1. 从原始数据中提取字段
     title = note.get('title', '无标题').strip()
     content = note.get('desc', '').strip()
-    author = note.get('user', {}).get('nickname', '未知用户')
+    user_info = note.get('user') if isinstance(note.get('user'), dict) else {}
+    author = user_info.get('nickname', '未知用户')
+    raw_likes = note.get('likes', 0)
+    try:
+        likes = int(raw_likes)
+    except (TypeError, ValueError):
+        likes = 0
     
     # 2. 标题长度控制（最多400字符，留余量）
     if len(title) > 400:
@@ -266,9 +272,10 @@ def clean_and_format_note(note: dict) -> dict:
         'title': title,
         'content': content,
         'author': author[:100],  # 作者名最多100字符
-        'likes': int(note.get('likes', 0)),
+        'likes': likes,
         'images': note.get('images', [])[:9],  # 最多保留9张图片
         'note_id': note.get('note_id', ''),
+        'note_url': note.get('note_url', ''),
     }
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -364,8 +371,11 @@ def save_notes_to_db(notes: list, session: Session, user_id: int, spot_id: int, 
                 cleaned['content']
             ]
             
-            if cleaned['note_id']:
-                content_parts.append(f"\n🔗 原文: https://www.xiaohongshu.com/explore/{cleaned['note_id']}")
+            source_url = cleaned['note_url']
+            if not source_url and cleaned['note_id']:
+                source_url = f"https://www.xiaohongshu.com/explore/{cleaned['note_id']}"
+            if source_url:
+                content_parts.append(f"\n🔗 原文: {source_url}")
             
             content = "\n".join(content_parts)
             

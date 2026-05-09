@@ -1,37 +1,40 @@
-import requests
+from fastapi.testclient import TestClient
 
-BASE_URL = "http://127.0.0.1:8000"
+from helpers import prepare_test_env, register_and_login
+
+
+prepare_test_env("search", vector=True)
+
+import api  # noqa: E402
+
 
 def main():
-    print("🔍 [搜索测试] 开始测试搜索功能...")
+    with TestClient(api.app) as client:
+        headers = register_and_login(client, "search_user")
+        create = client.post(
+            "/diaries/",
+            json={
+                "scope": "campus",
+                "spot_id": 44,
+                "title": "学生食堂搜索测试",
+                "content": "这里用于验证日记搜索。",
+                "media_files": [],
+            },
+            headers=headers,
+        )
+        assert create.status_code == 200, create.text
 
-    # 1. 搜日记
-    keyword = "食堂"  # mock_data 里肯定有关于食堂的日记
-    print(f"\n📋 测试 1: 搜索日记关键词 '{keyword}'")
-    
-    try:
-        res = requests.get(f"{BASE_URL}/diaries/search?keyword={keyword}")
-        results = res.json()
-        
-        if len(results) > 0:
-            print(f"   ✅ 找到 {len(results)} 篇日记")
-            print(f"   Example: 《{results[0]['title']}》")
-        else:
-            print("   ⚠️ 未找到数据，请确认 import_data.py 是否运行")
-            
-    except Exception as e:
-        print(f"❌ 错误: {e}")
+        diary_search = client.get("/diaries/search", params={"keyword": "食堂"})
+        assert diary_search.status_code == 200, diary_search.text
+        assert any(item["title"] == "学生食堂搜索测试" for item in diary_search.json())
 
-    # 2. 搜地点 (模糊搜索)
-    spot_name = "学一"
-    print(f"\n📍 测试 2: 搜索地点 '{spot_name}'")
-    res = requests.get(f"{BASE_URL}/spots/search?query={spot_name}")
-    data = res.json()
-    
-    if data:
-        print(f"   ✅ 找到地点: {data[0]['name']} (ID: {data[0]['id']})")
-    else:
-        print("   ❌ 未找到地点")
+        spot_search = client.get("/spots/search", params={"query": "学一"})
+        assert spot_search.status_code == 200, spot_search.text
+        assert spot_search.json()
+        assert spot_search.json()[0]["scope"] == "campus"
+
+    print("✅ 日记搜索与景点搜索测试通过")
+
 
 if __name__ == "__main__":
     main()

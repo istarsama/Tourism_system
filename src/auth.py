@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
 from pydantic import BaseModel
 from passlib.context import CryptContext
+import bcrypt as bcrypt_backend
 import jwt # 刚才装的库
 from database import get_session
 from models import User
@@ -25,8 +26,8 @@ if not SECRET_KEY:
 
 router = APIRouter(prefix="/auth", tags=["用户认证"])
 
-# 改用 argon2 (现在的标准)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# 新密码使用 argon2；保留 bcrypt 是为了兼容历史用户密码哈希。
+pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
 # --- 数据模型 ---
 class UserRegister(BaseModel):
@@ -42,6 +43,9 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 def verify_password(plain_password, hashed_password):
+    if hashed_password.startswith(("$2a$", "$2b$", "$2y$")):
+        password_bytes = plain_password.encode("utf-8")[:72]
+        return bcrypt_backend.checkpw(password_bytes, hashed_password.encode("utf-8"))
     return pwd_context.verify(plain_password, hashed_password)
 
 def create_access_token(data: dict):

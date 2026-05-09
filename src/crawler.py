@@ -1,8 +1,9 @@
 import json
 import os
+import re
 import sys
 from typing import List, Dict, Any
-from sqlmodel import Session
+from sqlmodel import Session, select
 from models import Diary, User
 
 CRAWLER_PATH = os.path.join(os.path.dirname(__file__), "tools", "Spider_XHS")
@@ -27,6 +28,71 @@ except ImportError as e:
 except Exception as e:
     print(f"\n❌❌❌ 发生未知错误: {e}\n")
     Data_Spider = None
+
+
+def _parse_count(value: Any) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, (int, float)):
+        return int(value)
+
+    text = str(value).strip().replace(",", "")
+    if not text:
+        return 0
+
+    multiplier = 1
+    if text.endswith("万"):
+        multiplier = 10000
+        text = text[:-1]
+    elif text.endswith("千"):
+        multiplier = 1000
+        text = text[:-1]
+
+    try:
+        return int(float(text) * multiplier)
+    except ValueError:
+        digits = re.findall(r"\d+", text)
+        return int("".join(digits)) if digits else 0
+
+
+def _extract_image_url(image: Any) -> str:
+    if isinstance(image, str):
+        return image
+    if not isinstance(image, dict):
+        return ""
+
+    info_list = image.get("info_list")
+    if isinstance(info_list, list):
+        for image_info in reversed(info_list):
+            if isinstance(image_info, dict) and image_info.get("url"):
+                return image_info["url"]
+
+    for key in ("url_default", "url_pre", "url", "src"):
+        if image.get(key):
+            return image[key]
+    return ""
+
+
+def _normalize_images(raw_images: Any) -> list[str]:
+    if isinstance(raw_images, str):
+        raw_images = raw_images.strip()
+        if raw_images.startswith("["):
+            try:
+                raw_images = json.loads(raw_images)
+            except json.JSONDecodeError:
+                raw_images = []
+        else:
+            raw_images = [img.strip() for img in raw_images.split(",") if img.strip()]
+    if not isinstance(raw_images, list):
+        return []
+
+    images = []
+    for image in raw_images:
+        image_url = _extract_image_url(image)
+        if image_url and image_url not in images:
+            images.append(image_url)
+    return images
+
 
 class XHSCrawler:
     def __init__(self):
@@ -61,19 +127,8 @@ class XHSCrawler:
                 print("   请在 .env 中添加: XHS_COOKIE='你的cookie字符串'")
                 return self._get_mock_data(keyword, limit)
 
-            # 2. 手动构造保存路径 (base_path)
-            # 原来的 init() 会读取 yaml 配置路径，我们这里直接指定到项目的 downloads 文件夹
-            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # 回退两层到根目录
-            download_dir = os.path.join(project_root, "downloads")
-            
-            base_path = {
-                "media": os.path.join(download_dir, "media"), # 图片/视频保存路径
-                "excel": os.path.join(download_dir, "excel")  # Excel 保存路径
-            }
-            
-            # 自动创建文件夹，防止报错
-            os.makedirs(base_path["media"], exist_ok=True)
-            os.makedirs(base_path["excel"], exist_ok=True)
+            # 后端导入主流程只需要结构化数据入库，不需要保存媒体或 Excel 到本地。
+            base_path = {}
             
             # =======================================================
             # 🔄 修改结束
@@ -85,8 +140,7 @@ class XHSCrawler:
                 require_num=limit,
                 cookies_str=cookies_str,
                 base_path=base_path,
-                save_choice='excel', # 我们选择保存一份 Excel 作为备份，也可以改代码支持 'none'
-                excel_name=f"search_{keyword}"
+                save_choice='none',
             )
 
             if not success:
@@ -99,11 +153,7 @@ class XHSCrawler:
             # 4. 数据清洗 (Mapping)
             formatted_notes = []
             for item in note_list:
-                images = item.get('image_list', [])
-                if isinstance(images, str):
-                    images = [img.strip() for img in images.split(',') if img.strip()]
-                elif not isinstance(images, list):
-                    images = []
+                images = _normalize_images(item.get('images') or item.get('image_list') or [])
 
                 user_info = item.get('user', {})
                 if not isinstance(user_info, dict):
@@ -117,17 +167,19 @@ class XHSCrawler:
                     raw_likes = item.get(key)
                     if raw_likes is None:
                         continue
-                    try:
-                        likes = int(raw_likes)
-                        break
-                    except (TypeError, ValueError):
-                        continue
+                    likes = _parse_count(raw_likes)
+                    break
+
+                note_id = item.get('note_id', '')
+                note_url = item.get('note_url') or item.get('url', '')
+                if not note_url and note_id:
+                    note_url = f"https://www.xiaohongshu.com/explore/{note_id}"
                 
                 formatted_notes.append({
-                    "note_id": item.get('note_id', ''),
-                    "note_url": item.get('note_url') or item.get('url', ''),
+                    "note_id": note_id,
+                    "note_url": note_url,
                     "title": item.get('title', '无标题'),
-                    "desc": item.get('desc', ''),
+                    "desc": item.get('desc') or item.get('content') or item.get('title', ''),
                     "user": {
                         "nickname": nickname,
                         "id": user_id
@@ -167,15 +219,26 @@ class XHSCrawler:
         """
         count = 0
         for note in notes:
-            # 简单的排重逻辑 (实际可能需要更复杂的判断)
-            # 这里直接创建新日记
+            title = f"[搬运] {note['title']}"
+            existing = session.exec(select(Diary).where(Diary.title == title)).first()
+            if existing:
+                continue
+
+            content_parts = [
+                f"作者: {note['user']['nickname']}",
+                "",
+                note.get("desc", ""),
+            ]
+            if note.get("note_url"):
+                content_parts.append(f"\n原文: {note['note_url']}")
+
             new_diary = Diary(
                 user_id=user_id,
                 spot_id=spot_id,
-                title=f"[搬运] {note['title']}",
-                content=f"作者: {note['user']['nickname']}\n\n{note['desc']}",
+                title=title,
+                content="\n".join(content_parts),
                 view_count=note['likes'],
-                media_json=json.dumps(note.get('images', []))
+                media_json=json.dumps(note.get('images', []), ensure_ascii=False)
             )
             session.add(new_diary)
             count += 1

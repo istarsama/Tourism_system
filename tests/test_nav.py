@@ -1,53 +1,40 @@
-import requests
+from fastapi.testclient import TestClient
 
-BASE_URL = "http://127.0.0.1:8000"
+from helpers import prepare_test_env
+
+
+prepare_test_env("nav")
+
+import api  # noqa: E402
+
 
 def main():
-    print("🗺️  [导航测试] 开始测试路径规划...")
+    with TestClient(api.app) as client:
+        single = client.post(
+            "/navigate",
+            json={"start_id": 1, "end_id": 44, "strategy": "dist", "transport": "walk"},
+        )
+        assert single.status_code == 200, single.text
+        single_data = single.json()
+        assert single_data["path_ids"][0] == 1
+        assert single_data["path_ids"][-1] == 44
+        assert single_data["cost_unit"] == "米"
 
-    # ==========================================
-    # 场景 1: 长距离导航 (西门 -> 学生食堂)
-    # ==========================================
-    print("\n🏃 [测试 1] 西门(1) -> 学生食堂(44)")
-    payload = {
-        "start_id": 1, 
-        "end_id": 44,  # ✅ 这是一个真实存在的点
-        "strategy": "dist",
-        "transport": "walk"
-    }
-    
-    try:
-        res = requests.post(f"{BASE_URL}/navigate", json=payload)
-        if res.status_code == 200:
-            data = res.json()
-            print(f"   ✅ 规划成功!")
-            print(f"   📍 路径: {data['path_names']}")
-            print(f"   📏 距离: {data['total_cost']} {data['cost_unit']}")
-        else:
-            print(f"   ❌ 失败: {res.text}")
+        multi = client.post(
+            "/navigate",
+            json={
+                "start_id": 1,
+                "end_id": 7,
+                "via_ids": [57],
+                "strategy": "dist",
+                "transport": "bike",
+            },
+        )
+        assert multi.status_code == 200, multi.text
+        assert 57 in multi.json()["path_ids"]
 
-        # ==========================================
-        # 场景 2: 多点规划 (西门 -> 经由图书馆 -> 南门)
-        # ==========================================
-        print("\n🔗 [测试 2] 多点规划: 西门(1) -> 途经图书馆(57) -> 南门(7)")
-        payload_multi = {
-            "start_id": 1,
-            "end_id": 7,      # 南门
-            "via_ids": [57],  # ✅ 图书馆 (ID 57 肯定存在)
-            "strategy": "dist",
-            "transport": "bike"
-        }
-        res = requests.post(f"{BASE_URL}/navigate", json=payload_multi)
-        
-        if res.status_code == 200:
-            data = res.json()
-            print(f"   ✅ 多点规划成功!")
-            print(f"   🗺️ 路线: {data['path_names']}")
-        else:
-            print(f"   ❌ 失败: {res.text}")
+    print("✅ 校园单点与多点导航测试通过")
 
-    except Exception as e:
-        print(f"❌ 连接失败: {e}")
 
 if __name__ == "__main__":
     main()

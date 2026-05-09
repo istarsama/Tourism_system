@@ -22,6 +22,11 @@ def main():
     
     # 2. 检查 Cookie 是否配置
     load_dotenv()
+    live_test = os.getenv("XHS_LIVE_TEST") == "1"
+    if not live_test:
+        os.environ.pop("XHS_COOKIE", None)
+        print("ℹ️ 当前为离线测试模式，强制使用 Mock 数据；如需真实爬取请设置 XHS_LIVE_TEST=1。")
+
     cookie = os.getenv("XHS_COOKIE")
     if not cookie:
         print("⚠️  警告: .env 中未检测到 'XHS_COOKIE'！")
@@ -46,7 +51,12 @@ def main():
         # 5. 打印结果
         if not results:
             print("❌ 未获取到任何数据。请检查网络或 Cookie 是否过期。")
-            return
+            sys.exit(1)
+
+        assert len(results) == limit_count
+        assert all(note.get("note_id") for note in results)
+        assert all(note.get("title") for note in results)
+        assert all(isinstance(note.get("images", []), list) for note in results)
 
         print(f"✅ 成功获取 {len(results)} 条笔记！数据结构预览：\n")
         print("=" * 50)
@@ -70,6 +80,7 @@ def main():
         print(f"\n❌ 运行时发生异常: {e}")
         import traceback
         traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
