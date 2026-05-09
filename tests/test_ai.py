@@ -1,71 +1,112 @@
-import requests
-import json
+from fastapi.testclient import TestClient
 
-BASE_URL = "http://127.0.0.1:8000"
+from helpers import prepare_test_env, register_and_login
 
-def run_scenario(name, question, expected_keyword_in_source):
-    """
-    一个通用的测试函数，用来测不同的场景
-    """
-    print(f"\n🧪 [测试场景] {name}")
-    print(f"   ❓ 提问: {question}")
-    
-    try:
-        # 发送请求
-        res = requests.post(f"{BASE_URL}/ai/rag_chat", json={"message": question})
-        
-        if res.status_code == 200:
-            data = res.json()
-            reply = data.get('reply', '')
-            source = data.get('source', '未知来源')
-            
-            # 打印结果
-            print(f"   🤖 AI 回复: {reply[:60]}...") # 只打印前60个字避免刷屏
-            print(f"   📜 实际来源: {source}")
-            
-            # 验证来源是否符合预期
-            if expected_keyword_in_source in source:
-                print(f"   ✅ 测试通过！成功识别意图。")
-            else:
-                print(f"   ⚠️ 警告: 来源不符 (预期包含 '{expected_keyword_in_source}')")
-        else:
-            print(f"   ❌ 请求失败: {res.text}")
-            
-    except Exception as e:
-        print(f"   ❌ 连接错误: {e}")
+
+prepare_test_env("ai", vector=True)
+
+import ai  # noqa: E402
+import api  # noqa: E402
+
+
+class _FakeResponse:
+    def __init__(self, content: str, tool_calls=None):
+        self.content = content
+        self.tool_calls = tool_calls or []
+
+
+class FakeLLM:
+    def __init__(self, route: str, answer: str):
+        self.route = route
+        self.answer = answer
+        self._router_called = False
+
+    def invoke(self, messages):
+        if isinstance(messages, str):
+            return _FakeResponse(f"润色后：{self.answer}")
+
+        system_text = "\n".join(getattr(message, "content", "") for message in messages)
+        if "对话标题" in system_text:
+            return _FakeResponse("测试会话")
+
+        if not self._router_called:
+            self._router_called = True
+            return _FakeResponse(self.route)
+
+        return _FakeResponse(self.answer)
+
+    def bind_tools(self, tools):
+        route = self.route
+        answer = self.answer
+
+        class _WithTools:
+            def __init__(self):
+                self._called = False
+
+            def invoke(self, messages):
+                if not self._called:
+                    self._called = True
+                    tool_name = (
+                        "search_web_knowledge"
+                        if route == "web"
+                        else "search_internal_knowledge"
+                    )
+                    return _FakeResponse(
+                        "",
+                        tool_calls=[
+                            {
+                                "name": tool_name,
+                                "args": {"query": "测试查询"},
+                                "id": f"call_{tool_name}",
+                            }
+                        ],
+                    )
+                return _FakeResponse(answer)
+
+        return _WithTools()
+
 
 def main():
-    print("🤖 开始全能 AI 导游测试 (数据库 + 联网 + 闲聊)...")
-    print("(请确保后端已重启，且 .env 里配置了 DEEPSEEK_API_KEY 和 TAVILY_API_KEY)")
+    with TestClient(api.app) as client:
+        ai.chat_llm = FakeLLM("chat", "你好，我是旅游系统助手。")
+        chat = client.post("/ai/rag_chat", json={"message": "你好呀"})
+        assert chat.status_code == 200, chat.text
+        assert "闲聊" in chat.json()["source"]
+        assert chat.json()["reply"]
 
-    # ---------------------------------------------------------
-    # 场景 1: 纯闲聊 (应该直接回答，不查任何东西)
-    # ---------------------------------------------------------
-    run_scenario(
-        name="纯闲聊模式",
-        question="你好呀，给我讲个冷笑话",
-        expected_keyword_in_source="AI闲聊"
-    )
+        ai.chat_llm = FakeLLM("web", "明天适合轻装出行。")
+        web = client.post("/ai/rag_chat", json={"message": "北京明天天气怎么样"})
+        assert web.status_code == 200, web.text
+        assert "Web" in web.json()["source"]
+        assert "轻装" in web.json()["reply"]
 
-    # ---------------------------------------------------------
-    # 场景 2: 查本地数据库 (应该查 MySQL 日记)
-    # ---------------------------------------------------------
-    # 只要你运行过 import_data.py，库里就有关于"食堂"的数据
-    run_scenario(
-        name="RAG 查库模式",
-        question="根据同学们的反馈，学生食堂的饭怎么样？",
-        expected_keyword_in_source="本地数据库"
-    )
+        ai.chat_llm = FakeLLM("chat", "今天的校园游记更自然。")
+        polish = client.post("/ai/polish", json={"content": "今天玩得不错"})
+        assert polish.status_code == 200, polish.text
+        assert "润色后" in polish.json()["polished"]
 
-    # ---------------------------------------------------------
-    # 场景 3: 查互联网 (应该调用 Tavily)
-    # ---------------------------------------------------------
-    # 问一个库里绝对没有、且具有时效性的问题
-    run_scenario(
-        name="联网搜索模式",
-        question="北京明天天气怎么样？适合穿什么衣服？",
-        expected_keyword_in_source="互联网搜索"
-    )
+        headers = register_and_login(client, "ai_session_user")
+        ai.chat_llm = FakeLLM("chat", "会话持久化回答。")
+        session_resp = client.post(
+            "/ai/rag_chat",
+            json={"message": "帮我记一条旅游计划"},
+            headers=headers,
+        )
+        assert session_resp.status_code == 200, session_resp.text
+        session_id = session_resp.json()["session_id"]
+        assert session_id
+
+        sessions = client.get("/ai/sessions", headers=headers)
+        assert sessions.status_code == 200, sessions.text
+        assert any(item["id"] == session_id for item in sessions.json())
+
+        messages = client.get(f"/ai/sessions/{session_id}/messages", headers=headers)
+        assert messages.status_code == 200, messages.text
+        roles = [item["role"] for item in messages.json()]
+        assert roles == ["user", "assistant"]
+
+    print("✅ AI 闲聊、联网路由、润色与会话持久化测试通过")
+
 
 if __name__ == "__main__":
     main()

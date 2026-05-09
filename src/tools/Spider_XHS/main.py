@@ -3,12 +3,120 @@ import os
 from loguru import logger
 from apis.xhs_pc_apis import XHS_Apis
 from xhs_utils.common_util import init
-from xhs_utils.data_util import handle_note_info, download_note, save_to_xlsx
+from xhs_utils.data_util import handle_note_info, download_note, save_to_xlsx, timestamp_to_str
+
+
+SAVE_CHOICES = {'none', 'all', 'media', 'media-image', 'media-video', 'excel'}
 
 
 class Data_Spider():
     def __init__(self):
         self.xhs_apis = XHS_Apis()
+
+    def _build_note_url(self, note: dict) -> str:
+        note_card = note.get('note_card') if isinstance(note.get('note_card'), dict) else {}
+        note_id = note.get('id') or note.get('note_id') or note_card.get('id') or note_card.get('note_id')
+        if not note_id:
+            return ''
+
+        query_parts = []
+        xsec_token = note.get('xsec_token') or note.get('xsecToken') or note_card.get('xsec_token')
+        xsec_source = note.get('xsec_source') or note.get('xsecSource') or note_card.get('xsec_source')
+        if xsec_token:
+            query_parts.append(f"xsec_token={xsec_token}")
+        if xsec_source:
+            query_parts.append(f"xsec_source={xsec_source}")
+
+        note_url = f"https://www.xiaohongshu.com/explore/{note_id}"
+        if query_parts:
+            note_url = f"{note_url}?{'&'.join(query_parts)}"
+        return note_url
+
+    def _is_note_item(self, item: dict) -> bool:
+        if not isinstance(item, dict):
+            return False
+        if item.get('model_type') == 'note':
+            return True
+        note_card = item.get('note_card')
+        return isinstance(note_card, dict) and bool(
+            item.get('id') or item.get('note_id') or note_card.get('id') or note_card.get('note_id')
+        )
+
+    def _extract_image_url(self, image) -> str:
+        if isinstance(image, str):
+            return image
+        if not isinstance(image, dict):
+            return ''
+
+        info_list = image.get('info_list')
+        if isinstance(info_list, list):
+            for image_info in reversed(info_list):
+                if isinstance(image_info, dict) and image_info.get('url'):
+                    return image_info['url']
+
+        for key in ('url_default', 'url_pre', 'url', 'src'):
+            if image.get(key):
+                return image[key]
+        return ''
+
+    def _normalize_search_note(self, note: dict, note_url: str = '') -> dict:
+        note_card = note.get('note_card') if isinstance(note.get('note_card'), dict) else note
+        user_info = note_card.get('user') if isinstance(note_card.get('user'), dict) else {}
+        interact_info = note_card.get('interact_info') if isinstance(note_card.get('interact_info'), dict) else {}
+
+        note_id = note.get('id') or note.get('note_id') or note_card.get('id') or note_card.get('note_id') or ''
+        note_type_raw = note_card.get('type') or note.get('note_type') or 'normal'
+        note_type = '视频' if note_type_raw in {'video', '视频'} else '图集'
+        normalized_url = note_url or self._build_note_url(note)
+
+        image_list = []
+        for image in note_card.get('image_list') or note.get('image_list') or []:
+            image_url = self._extract_image_url(image)
+            if image_url and image_url not in image_list:
+                image_list.append(image_url)
+
+        cover_url = self._extract_image_url(note_card.get('cover') or note.get('cover'))
+        if cover_url and cover_url not in image_list:
+            image_list.append(cover_url)
+
+        tags = []
+        for tag in note_card.get('tag_list') or note.get('tag_list') or []:
+            if isinstance(tag, dict) and tag.get('name'):
+                tags.append(tag['name'])
+
+        upload_time = ''
+        raw_time = note_card.get('time') or note.get('time')
+        if raw_time:
+            try:
+                upload_time = timestamp_to_str(int(raw_time))
+            except (TypeError, ValueError):
+                upload_time = str(raw_time)
+
+        title = note_card.get('title') or note_card.get('display_title') or note.get('title') or '无标题'
+        desc = note_card.get('desc') or note.get('desc') or note_card.get('display_title') or ''
+        liked_count = interact_info.get('liked_count') or note.get('liked_count') or note.get('likes') or 0
+
+        return {
+            'note_id': note_id,
+            'note_url': normalized_url,
+            'note_type': note_type,
+            'user_id': user_info.get('user_id') or user_info.get('id') or note.get('user_id') or '',
+            'home_url': f"https://www.xiaohongshu.com/user/profile/{user_info.get('user_id') or user_info.get('id') or note.get('user_id') or ''}",
+            'nickname': user_info.get('nickname') or user_info.get('nick_name') or note.get('nickname') or '未知用户',
+            'avatar': user_info.get('avatar') or user_info.get('image') or note.get('avatar') or '',
+            'title': title.strip() or '无标题',
+            'desc': desc,
+            'liked_count': liked_count,
+            'collected_count': interact_info.get('collected_count') or note.get('collected_count') or 0,
+            'comment_count': interact_info.get('comment_count') or note.get('comment_count') or 0,
+            'share_count': interact_info.get('share_count') or note.get('share_count') or 0,
+            'video_cover': image_list[0] if note_type == '视频' and image_list else None,
+            'video_addr': note.get('video_addr') or None,
+            'image_list': image_list,
+            'tags': tags,
+            'upload_time': upload_time,
+            'ip_location': note_card.get('ip_location') or note.get('ip_location') or '未知',
+        }
 
     def spider_note(self, note_url: str, cookies_str: str, proxies=None):
         """
@@ -21,7 +129,13 @@ class Data_Spider():
         try:
             success, msg, note_info = self.xhs_apis.get_note_info(note_url, cookies_str, proxies)
             if success:
-                note_info = note_info['data']['items'][0]
+                data = note_info.get('data') if isinstance(note_info, dict) else {}
+                items = data.get('items') if isinstance(data, dict) else None
+                if isinstance(items, dict):
+                    items = [items]
+                if not items:
+                    raise KeyError('data.items')
+                note_info = items[0]
                 note_info['url'] = note_url
                 note_info = handle_note_info(note_info)
         except Exception as e:
@@ -30,22 +144,31 @@ class Data_Spider():
         logger.info(f'爬取笔记信息 {note_url}: {success}, msg: {msg}')
         return success, msg, note_info
 
-    def spider_some_note(self, notes: list, cookies_str: str, base_path: dict, save_choice: str, excel_name: str = '', proxies=None):
+    def spider_some_note(self, notes: list, cookies_str: str, base_path: dict, save_choice: str, excel_name: str = '', proxies=None, fallback_notes: list | None = None):
         """
         爬取一些笔记的信息，并按 save_choice 保存媒体/Excel。
 
         兼容说明：
         - 旧版 Spider_XHS 主要负责下载媒体和保存 Excel；
         - 项目接入后需要把 note_list 返回给业务层入库；
-        - 因此这里同时保留“保存副作用”和“返回数据列表”，避免出现能爬到但不下载/不导出的情况。
+        - 当前后端导入主流程使用 save_choice='none'，只返回数据给数据库层，不落本地文件；
+        - 详情接口失效时，可传入 fallback_notes，用搜索结果卡片兜底入库。
         """
+        if save_choice not in SAVE_CHOICES:
+            raise ValueError(f"save_choice 仅支持: {', '.join(sorted(SAVE_CHOICES))}")
         if (save_choice == 'all' or save_choice == 'excel') and excel_name == '':
             raise ValueError('excel_name 不能为空')
         
         note_list = []
-        for note_url in notes:
+        fallback_notes = fallback_notes or []
+        for index, note_url in enumerate(notes):
             success, msg, note_info = self.spider_note(note_url, cookies_str, proxies)
-            if note_info is not None and success:
+            if (not success or note_info is None) and index < len(fallback_notes):
+                fallback_note = fallback_notes[index]
+                if fallback_note:
+                    note_info = self._normalize_search_note(fallback_note, note_url)
+                    logger.warning(f"笔记详情接口失败，已使用搜索结果兜底 note_url={note_url}, msg={msg}")
+            if note_info is not None:
                 note_list.append(note_info)
         
         if save_choice in ['all', 'media', 'media-image', 'media-video']:
@@ -99,21 +222,35 @@ class Data_Spider():
         """
         result_data = [] # 用于存储最终结果
         note_urls = []
+        notes = []
         try:
             success, msg, notes = self.xhs_apis.search_some_note(query, require_num, cookies_str, sort_type_choice, note_type, note_time, note_range, pos_distance, geo, proxies)
             if success:
-                notes = list(filter(lambda x: x['model_type'] == "note", notes))
+                notes = [note for note in notes if self._is_note_item(note)]
                 logger.info(f'搜索关键词 {query} 笔记数量: {len(notes)}')
-                for note in notes:
-                    # 注意：构造 URL 的逻辑
-                    note_url = f"https://www.xiaohongshu.com/explore/{note['id']}?xsec_token={note['xsec_token']}"
-                    note_urls.append(note_url)
             
             if save_choice == 'all' or save_choice == 'excel':
                 excel_name = query
             
             # ✅ 修改：接收 spider_some_note 返回的数据
-            result_data = self.spider_some_note(note_urls, cookies_str, base_path, save_choice, excel_name, proxies)
+            fallback_notes = []
+            for note in notes:
+                note_url = self._build_note_url(note)
+                if not note_url:
+                    logger.warning(f"搜索结果缺少 note_id，已跳过: {note}")
+                    continue
+                note_urls.append(note_url)
+                fallback_notes.append(note)
+
+            result_data = self.spider_some_note(
+                note_urls,
+                cookies_str,
+                base_path,
+                save_choice,
+                excel_name,
+                proxies,
+                fallback_notes=fallback_notes,
+            )
             
         except Exception as e:
             success = False

@@ -92,9 +92,16 @@ def handle_note_info(data):
         except:
             pass
     if note_type == '视频':
-        video_cover = image_list[0]
-        video_addr = 'https://sns-video-bd.xhscdn.com/' + data['note_card']['video']['consumer']['origin_video_key']
-        # success, msg, video_addr = XHS_Apis.get_note_no_water_video(note_id)
+        video_cover = image_list[0] if image_list else None
+        video_addr = None
+        video_info = data.get('note_card', {}).get('video', {})
+        streams = video_info.get('media', {}).get('stream', {}).get('h264', [])
+        if streams:
+            video_addr = streams[0].get('master_url') or streams[0].get('url')
+        if not video_addr and 'consumer' in video_info:
+            origin_key = video_info['consumer'].get('origin_video_key')
+            if origin_key:
+                video_addr = f"https://sns-video-bd.xhscdn.com/{origin_key}"
     else:
         video_cover = None
         video_addr = None
@@ -192,32 +199,18 @@ def save_to_xlsx(datas, file_path, type='note'):
     logger.info(f'数据保存至 {file_path}')
 
 def download_media(path, name, url, type):
-    if not url:
-        raise ValueError("下载地址为空")
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/124.0.0.0 Safari/537.36"
-        ),
-        "Referer": "https://www.xiaohongshu.com/",
-    }
     if type == 'image':
-        response = requests.get(url, headers=headers, timeout=20)
-        response.raise_for_status()
-        content = response.content
+        content = requests.get(url).content
         with open(path + '/' + name + '.jpg', mode="wb") as f:
             f.write(content)
     elif type == 'video':
-        res = requests.get(url, headers=headers, stream=True, timeout=30)
-        res.raise_for_status()
+        res = requests.get(url, stream=True)
         size = 0
         chunk_size = 1024 * 1024
         with open(path + '/' + name + '.mp4', mode="wb") as f:
             for data in res.iter_content(chunk_size=chunk_size):
-                if data:
-                    f.write(data)
-                    size += len(data)
+                f.write(data)
+                size += len(data)
 
 def save_user_detail(user, path):
     with open(f'{path}/detail.txt', mode="w", encoding="utf-8") as f:

@@ -1,59 +1,40 @@
 import json
 import math
+import os
 import random
 import execjs
-import os
 from xhs_utils.cookie_util import trans_cookies
 
-# 获取当前文件所在目录 (xhs_utils)
 current_dir = os.path.dirname(os.path.abspath(__file__))
-# 计算 static 目录的绝对路径 (src/tools/Spider_XHS/static)
-static_dir = os.path.join(os.path.dirname(current_dir), 'static')
+tool_dir = os.path.dirname(current_dir)
+static_dir = os.path.join(tool_dir, 'static')
+node_modules_dir = os.path.join(tool_dir, 'node_modules')
 
-# 构造 JS 文件的绝对路径
-js_path = os.path.join(static_dir, 'xhs_xs_xsc_56.js')
-xray_path = os.path.join(static_dir, 'xhs_xray.js')
 
-# ==============================================================================
-# 🛠️ 关键修复：动态替换 JS 中的相对路径为绝对路径
-# ==============================================================================
-def load_js_with_absolute_paths(file_path, base_static_dir):
-    """
-    读取 JS 文件，并将其中的 ./static 引用替换为绝对路径，
-    防止 execjs 在不同目录下运行时找不到依赖。
-    """
+def _js_path(path: str) -> str:
+    return path.replace("\\", "/")
+
+
+def load_js_with_absolute_paths(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
-    
-    # 1. 将 Windows 反斜杠路径转换为 JS 认识的正斜杠
-    # 例如: D:\Project\static -> D:/Project/static
-    abs_static_path = base_static_dir.replace("\\", "/")
-    
-    # 2. 暴力替换：将 JS 源码里的 relative require 路径修正为 absolute path
-    # 错误源码可能长这样: require("./static/xhs_xray_pack1.js")
-    # 我们把它变成: require("D:/Project/.../static/xhs_xray_pack1.js")
-    content = content.replace("./static", abs_static_path)
-    
-    # 3. 编译
+
+    content = content.replace("./static", _js_path(static_dir))
+
+    package_paths = {
+        "crypto-js": os.path.join(node_modules_dir, "crypto-js"),
+        "jsdom": os.path.join(node_modules_dir, "jsdom"),
+    }
+    for package_name, package_path in package_paths.items():
+        package_path = _js_path(package_path)
+        content = content.replace(f"require('{package_name}')", f"require('{package_path}')")
+        content = content.replace(f'require("{package_name}")', f'require("{package_path}")')
+
     return execjs.compile(content)
 
-# 加载 xs.js
-try:
-    # xs.js 通常没有复杂的 require，直接编译即可，或者为了保险也用处理函数
-    # 这里保持原样或统一处理均可，原样通常没问题
-    js = execjs.compile(open(js_path, 'r', encoding='utf-8').read())
-except Exception as e:
-    print(f"Error loading js file: {e}")
-    raise e
 
-# 加载 xray.js (这里是报错的源头)
-try:
-    # 🔥 使用修复函数加载
-    xray_js = load_js_with_absolute_paths(xray_path, static_dir)
-except Exception as e:
-    print(f"Error loading xray js file: {e}")
-    raise e
-# ==============================================================================
+js = load_js_with_absolute_paths(os.path.join(static_dir, 'xhs_main_260411.js'))
+xray_js = load_js_with_absolute_paths(os.path.join(static_dir, 'xhs_xray.js'))
 
 def generate_x_b3_traceid(len=16):
     x_b3_traceid = ""
@@ -73,7 +54,6 @@ def generate_xs(a1, api, data=''):
 
 def generate_xray_traceid():
     return xray_js.call('traceId')
-
 def get_common_headers():
     return {
         "authority": "www.xiaohongshu.com",
@@ -92,7 +72,6 @@ def get_common_headers():
         "upgrade-insecure-requests": "1",
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     }
-
 def get_request_headers_template():
     return {
         "authority": "edith.xiaohongshu.com",

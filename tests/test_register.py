@@ -1,24 +1,33 @@
-import requests # 如果报错没这个库，先运行 uv add requests
+from fastapi.testclient import TestClient
 
-# 1. 定义要注册的用户信息
-data = {
-    "username": "xiaoming",  # 你可以随便改名字
-    "password": "my_secret_password_123"
-}
+from helpers import prepare_test_env
 
-# 2. 发送请求给后端
-print(f"正在尝试注册用户: {data['username']} ...")
-try:
-    # 注意：如果你是在本地跑，地址是 127.0.0.1:8000
-    response = requests.post("http://127.0.0.1:8000/auth/register", json=data)
-    
-    # 3. 打印结果
-    if response.status_code == 200:
-        print("✅ 注册成功！")
-        print("后端返回:", response.json())
-    else:
-        print("❌ 注册失败")
-        print("错误信息:", response.text)
 
-except Exception as e:
-    print(f"❌ 请求发送失败: {e}")
+prepare_test_env("register")
+
+import api  # noqa: E402
+
+
+def main():
+    with TestClient(api.app) as client:
+        payload = {"username": "xiaoming", "password": "my_secret_password_123"}
+
+        response = client.post("/auth/register", json=payload)
+        assert response.status_code == 200, response.text
+        assert response.json()["username"] == payload["username"]
+
+        duplicate = client.post("/auth/register", json=payload)
+        assert duplicate.status_code == 400
+        assert "用户名已存在" in duplicate.text
+
+        login = client.post("/auth/login", json=payload)
+        assert login.status_code == 200, login.text
+        data = login.json()
+        assert data["token_type"] == "bearer"
+        assert data["access_token"]
+
+    print("✅ 注册、重复注册与登录联动测试通过")
+
+
+if __name__ == "__main__":
+    main()
