@@ -95,7 +95,22 @@ def navigate_osm(request: OSMNavigateRequest, session: Session = Depends(get_ses
         raise HTTPException(status_code=404, detail="终点全国景点不存在")
 
     if start_spot.city != end_spot.city:
-        raise HTTPException(status_code=400, detail="当前仅支持同城市景点之间的 OSM 导航")
+        raise HTTPException(
+            status_code=400,
+            detail=f"当前仅支持同城市景点之间的 OSM 导航: 起点城市={start_spot.city}, 终点城市={end_spot.city}",
+        )
+
+    logger.info(
+        "OSM 导航景点解析成功 city={} transport={} start={}({},{}) end={}({},{})",
+        start_spot.city,
+        request.transport,
+        start_spot.name,
+        start_spot.latitude,
+        start_spot.longitude,
+        end_spot.name,
+        end_spot.latitude,
+        end_spot.longitude,
+    )
 
     osm_service = get_osm_service()
     try:
@@ -108,7 +123,28 @@ def navigate_osm(request: OSMNavigateRequest, session: Session = Depends(get_ses
             transport=request.transport,
         )
     except ValueError as exc:
+        elapsed_ms = (perf_counter() - started_at) * 1000
+        logger.warning(
+            "OSM 导航失败 city={} transport={} start_spot_id={} end_spot_id={} error={} elapsed_ms={:.2f}",
+            start_spot.city,
+            request.transport,
+            request.start_spot_id,
+            request.end_spot_id,
+            exc,
+            elapsed_ms,
+        )
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        elapsed_ms = (perf_counter() - started_at) * 1000
+        logger.exception(
+            "OSM 导航出现未预期异常 city={} transport={} start_spot_id={} end_spot_id={} elapsed_ms={:.2f}",
+            start_spot.city,
+            request.transport,
+            request.start_spot_id,
+            request.end_spot_id,
+            elapsed_ms,
+        )
+        raise HTTPException(status_code=500, detail="OSM 导航服务异常，请稍后重试") from exc
 
     segment_distances_m = [float(d) for d in result.get("segment_distances_m", [])]
     segment_count = int(result.get("segment_count", len(segment_distances_m)))
@@ -129,8 +165,13 @@ def navigate_osm(request: OSMNavigateRequest, session: Session = Depends(get_ses
 
     elapsed_ms = (perf_counter() - started_at) * 1000
     logger.info(
-        "OSM 导航完成 city={} nodes={} distance={}m eta={}s elapsed_ms={:.2f}",
+        "OSM 导航完成 city={} transport={} start=({}, {}) end=({}, {}) nodes={} distance={}m eta={}s elapsed_ms={:.2f}",
         response["city"],
+        response["transport"],
+        start_spot.latitude,
+        start_spot.longitude,
+        end_spot.latitude,
+        end_spot.longitude,
         len(response["node_ids"]),
         response["total_distance_m"],
         response["estimated_duration_s"],

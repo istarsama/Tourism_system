@@ -104,6 +104,8 @@ def main():
             assert ok_data["transport"] == "walk"
             assert ok_data["node_ids"] == [101, 102, 103]
             assert ok_data["path_coords"] == [[39.91, 116.39], [39.95, 116.34], [40.0, 116.27]]
+            assert ok_data["path_coords"][0][0] == 39.91
+            assert ok_data["path_coords"][0][1] == 116.39
             assert ok_data["total_distance_m"] == 12800.5
             assert ok_data["segment_count"] == 2
             assert ok_data["segment_distances_m"] == [5200.25, 7600.25]
@@ -129,6 +131,8 @@ def main():
                 },
             )
             assert invalid_transport_resp.status_code == 400
+            assert "walk" in invalid_transport_resp.text
+            assert "bike" in invalid_transport_resp.text
 
             cross_city_resp = client.post(
                 "/navigate/osm",
@@ -139,6 +143,45 @@ def main():
                 },
             )
             assert cross_city_resp.status_code == 400
+            assert "起点城市=北京" in cross_city_resp.text
+            assert "终点城市=上海" in cross_city_resp.text
+
+            missing_start_resp = client.post(
+                "/navigate/osm",
+                json={
+                    "start_spot_id": 999999,
+                    "end_spot_id": end_id,
+                    "transport": "walk",
+                },
+            )
+            assert missing_start_resp.status_code == 404
+            assert "起点全国景点不存在" in missing_start_resp.text
+
+            missing_end_resp = client.post(
+                "/navigate/osm",
+                json={
+                    "start_spot_id": start_id,
+                    "end_spot_id": 999999,
+                    "transport": "walk",
+                },
+            )
+            assert missing_end_resp.status_code == 404
+            assert "终点全国景点不存在" in missing_end_resp.text
+
+            def failing_route_planning(**kwargs):
+                raise ValueError("测试路网不可达")
+
+            api.osm_service.route_planning = failing_route_planning
+            failed_route_resp = client.post(
+                "/navigate/osm",
+                json={
+                    "start_spot_id": start_id,
+                    "end_spot_id": end_id,
+                    "transport": "walk",
+                },
+            )
+            assert failed_route_resp.status_code == 400
+            assert "测试路网不可达" in failed_route_resp.text
         finally:
             api.osm_service.route_planning = original_route_planning
 

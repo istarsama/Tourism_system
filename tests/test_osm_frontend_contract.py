@@ -188,6 +188,9 @@ def main():
             assert navigate_data["segment_distances_m"] == [5200.25, 7600.25]
             assert navigate_data["estimated_duration_s"] == 9143.21
             assert navigate_data["path_coords"][0] == [39.916345, 116.397155]
+            assert all(len(coord) == 2 for coord in navigate_data["path_coords"])
+            assert all(20 <= coord[0] <= 55 for coord in navigate_data["path_coords"])
+            assert all(70 <= coord[1] <= 140 for coord in navigate_data["path_coords"])
 
             diary_list_resp = client.get(start_spot["diary_api"])
             assert diary_list_resp.status_code == 200
