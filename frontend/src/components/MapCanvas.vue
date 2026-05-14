@@ -10,14 +10,38 @@
       @click="handleClick"
     />
     <div v-if="mapStore.loading" class="loading">地图加载中...</div>
+
+    <CampusSpotDiaryPopup
+      :show="Boolean(mapStore.selectedSpot) && (diaryPopupLoading || showDiaryPopup)"
+      :loading="diaryPopupLoading"
+      :spot-name="popupSpotName"
+      :diaries="spotDiaries"
+      :empty-text="diaryPopupEmptyText"
+      :anchor-x="popupAnchor?.x ?? null"
+      :anchor-y="popupAnchor?.y ?? null"
+      :viewport-width="popupViewport.width"
+      :viewport-height="popupViewport.height"
+      @close="closeDiaryPopup"
+      @open-diary="openDiaryDetail"
+    />
+
+    <DiaryDetailModal
+      v-model:show="showDiaryDetailModal"
+      :diary-id="selectedDiaryId"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useMapStore } from '../stores/map'
+import { useDiaryStore } from '../stores/diary'
+import { api } from '../api'
+import CampusSpotDiaryPopup from './CampusSpotDiaryPopup.vue'
+import DiaryDetailModal from './DiaryDetailModal.vue'
 
 const mapStore = useMapStore()
+const diaryStore = useDiaryStore()
 const canvasRef = ref(null)
 const ctx = ref(null)
 const mapImage = ref(null)
@@ -34,6 +58,41 @@ const pathAnimation = ref({
   active: false,
   progress: 0,
   speed: 50.0  // 加快动画速度
+})
+
+const showDiaryPopup = ref(false)
+const diaryPopupLoading = ref(false)
+const spotDiaries = ref([])
+const popupSpotName = ref('')
+const diaryPopupEmptyText = ref('该点位暂无社区日记')
+const selectedDiaryId = ref(null)
+const showDiaryDetailModal = ref(false)
+const viewportTick = ref(0)
+let diaryRequestToken = 0
+
+const popupAnchor = computed(() => {
+  const selectedSpot = mapStore.selectedSpot
+  const canvas = canvasRef.value
+
+  if (!selectedSpot || !canvas || selectedSpot.x == null || selectedSpot.y == null) {
+    return null
+  }
+
+  return toScreen(selectedSpot.x, selectedSpot.y)
+})
+
+const popupViewport = computed(() => {
+  void viewportTick.value
+
+  const canvas = canvasRef.value
+  if (!canvas) {
+    return { width: 0, height: 0 }
+  }
+
+  return {
+    width: canvas.parentElement?.clientWidth || canvas.width || 0,
+    height: canvas.parentElement?.clientHeight || canvas.height || 0
+  }
 })
 
 // 常量
@@ -94,6 +153,7 @@ function resizeCanvas() {
 
   canvas.width = canvas.parentElement.clientWidth
   canvas.height = canvas.parentElement.clientHeight
+  viewportTick.value += 1
   
   fitMapToScreen()
   render()
@@ -234,7 +294,6 @@ function handleClick(e) {
   const rect = canvasRef.value.getBoundingClientRect()
   const mouseX = e.clientX - rect.left
   const mouseY = e.clientY - rect.top
-  const worldPos = toWorld(mouseX, mouseY)
 
   // 查找点击的节点
   for (const node of mapStore.nodes) {
@@ -244,15 +303,15 @@ function handleClick(e) {
     const dist = Math.hypot(screenPos.x - mouseX, screenPos.y - mouseY)
     
     if (dist <= NODE_RADIUS + 3) {
-      handleNodeClick(node, e.ctrlKey || e.metaKey)
+      handleNodeClick(node)
       return
     }
   }
+
+  closeDiaryPopup()
 }
 
-function handleNodeClick(node, isCtrlPressed) {
-  mapStore.selectNode(node)
-  
+function handleNodeClick(node) {
   // 状态机逻辑：
   // 1. 如果点击的是当前起点 -> 取消起点
   // 2. 如果点击的是当前终点 -> 取消终点
@@ -284,6 +343,71 @@ function handleNodeClick(node, isCtrlPressed) {
     }
   }
   
+  mapStore.selectNode(node)
+  render()
+  loadCampusSpotDiaries(node)
+}
+
+async function loadCampusSpotDiaries(node) {
+  if (!node?.id) {
+    closeDiaryPopup()
+    return
+  }
+
+  const currentToken = ++diaryRequestToken
+  popupSpotName.value = node.name || '景点'
+  diaryPopupEmptyText.value = '该点位暂无社区日记'
+  diaryPopupLoading.value = true
+  showDiaryPopup.value = false
+  spotDiaries.value = []
+
+  try {
+    const params = {
+      scope: 'campus',
+      sort_by: 'heat'
+    }
+
+    // 兼容 HMR/缓存导致的旧 store 实例：优先用新方法，不存在则直连 API。
+    const diaries = typeof diaryStore.fetchSpotDiaries === 'function'
+      ? await diaryStore.fetchSpotDiaries(node.id, params)
+      : await api.getSpotDiaries(node.id, params)
+
+    if (currentToken !== diaryRequestToken) return
+
+    if (Array.isArray(diaries) && diaries.length > 0) {
+      spotDiaries.value = [...diaries].sort((a, b) => (b.view_count || 0) - (a.view_count || 0))
+      showDiaryPopup.value = true
+      return
+    }
+
+    diaryPopupEmptyText.value = `${popupSpotName.value} 暂无社区日记`
+    showDiaryPopup.value = true
+  } catch (error) {
+    if (currentToken !== diaryRequestToken) return
+    console.error('Failed to load campus spot diaries:', error)
+    spotDiaries.value = []
+    diaryPopupEmptyText.value = `社区日记加载失败：${error.message || '请稍后重试'}`
+    showDiaryPopup.value = true
+  } finally {
+    if (currentToken === diaryRequestToken) {
+      diaryPopupLoading.value = false
+    }
+  }
+}
+
+function openDiaryDetail(diaryId) {
+  selectedDiaryId.value = diaryId
+  showDiaryDetailModal.value = true
+}
+
+function closeDiaryPopup() {
+  diaryRequestToken += 1
+  showDiaryPopup.value = false
+  diaryPopupLoading.value = false
+  spotDiaries.value = []
+  popupSpotName.value = ''
+  diaryPopupEmptyText.value = '该点位暂无社区日记'
+  mapStore.clearSelectedSpot()
   render()
 }
 

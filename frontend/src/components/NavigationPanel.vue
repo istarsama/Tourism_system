@@ -161,69 +161,25 @@
       </div>
     </Transition>
 
-    <!-- 景点详情卡片 -->
-    <Transition
-      enter-active-class="transition-all duration-300 ease-out"
-      enter-from-class="opacity-0 transform translate-y-4"
-      leave-active-class="transition-all duration-200 ease-in"
-      leave-to-class="opacity-0 transform -translate-y-2"
-    >
-      <div v-if="mapStore.selectedSpot" class="bg-gradient-to-br from-mint-green/10 to-emerald-50/60 backdrop-blur-sm rounded-2xl p-5 ring-1 ring-mint-green/20 shadow-lg">
-        <div class="flex items-center gap-2 mb-3">
-          <div class="p-2 bg-mint-green/10 rounded-lg">
-            <MapPin :size="18" class="text-mint-green" />
-          </div>
-          <h3 class="text-base font-bold text-gray-800">景点详情</h3>
-        </div>
-        
-        <div class="space-y-3">
-          <div>
-            <h4 class="text-lg font-bold text-gray-900 mb-1">{{ mapStore.selectedSpot.name }}</h4>
-            <span class="inline-block px-2.5 py-1 bg-mint-green/10 text-mint-green text-xs font-semibold rounded-full">
-              {{ mapStore.selectedSpot.type || mapStore.selectedSpot.category || '景点' }}
-            </span>
-          </div>
-          
-          <p class="text-sm text-gray-700 leading-relaxed bg-white/50 rounded-lg p-3">
-            {{ mapStore.selectedSpot.desc || mapStore.selectedSpot.description || '暂无介绍' }}
-          </p>
-          
-          <button 
-            v-if="authStore.isAuthenticated"
-            @click="$emit('view-spot-diaries', mapStore.selectedSpot.id)"
-            class="w-full px-4 py-2.5 bg-gradient-to-r from-mint-green to-emerald-500 text-white rounded-xl font-medium text-sm
-                   shadow-lg shadow-mint-green/30 hover:shadow-xl hover:shadow-mint-green/40 hover:-translate-y-0.5
-                   active:scale-95 transition-all duration-200 flex items-center justify-center gap-2"
-          >
-            <BookOpen :size="16" />
-            查看该景点日记
-          </button>
-        </div>
-      </div>
-    </Transition>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { 
-  Navigation, Route, Car, MapIcon, MapPin, ArrowDownUp, 
-  RotateCcw, Loader2, ListOrdered, BookOpen 
+  Navigation, Route, Car, MapIcon, ArrowDownUp, 
+  RotateCcw, Loader2, ListOrdered 
 } from 'lucide-vue-next'
 import { useMapStore } from '../stores/map'
-import { useAuthStore } from '../stores/auth'
 import SearchInput from './SearchInput.vue'
 
 const mapStore = useMapStore()
-const authStore = useAuthStore()
 
 const startSearch = ref('')
 const endSearch = ref('')
 const strategy = ref('dist')
 const transport = ref('walk')
 const isNavigating = ref(false)
-
-defineEmits(['view-spot-diaries'])
 
 function handleSelectStart(spot) {
   if (!spot) {

@@ -105,7 +105,11 @@ export const useMapStore = defineStore('map', () => {
 
   // 选择节点
   function selectNode(node) {
-    selectedSpot.value = node
+    selectedSpot.value = node || null
+  }
+
+  function clearSelectedSpot() {
+    selectedSpot.value = null
   }
 
   // 设置起点
@@ -169,6 +173,7 @@ export const useMapStore = defineStore('map', () => {
     navigate,
     resetNavigation,
     selectNode,
+    clearSelectedSpot,
     setStart,
     setEnd,
     updateTransform,

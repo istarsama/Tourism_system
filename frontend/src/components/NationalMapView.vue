@@ -40,6 +40,11 @@ let tileLayer = null
 let markerLayer = null
 let routeLayer = null
 let hasAutoFitted = false
+let routeAnimationFrame = null
+let routeAnimationToken = 0
+
+const ROUTE_ANIMATION_TARGET_FRAMES = 90
+const ROUTE_ANIMATION_MIN_POINTS_PER_FRAME = 1
 
 onMounted(async () => {
   await initNationalMap()
@@ -47,6 +52,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  stopRouteAnimation()
   if (mapInstance) {
     mapInstance.remove()
     mapInstance = null
@@ -79,6 +85,9 @@ watch(
 
 async function initNationalMap(force = false) {
   showLoading.value = true
+  if (force) {
+    hasAutoFitted = false
+  }
   try {
     await store.initialize(force)
   } catch (error) {
@@ -132,18 +141,21 @@ function getMarkerStyle(spot) {
 }
 
 function handleMarkerClick(spot) {
-  store.setSelectedSpot(spot)
-
   if (store.startSpot?.id === spot.id) {
     store.setStartSpot(null)
+    store.setSelectedSpot(null)
   } else if (store.endSpot?.id === spot.id) {
     store.setEndSpot(null)
+    store.setSelectedSpot(null)
   } else if (!store.startSpot) {
     store.setStartSpot(spot)
+    store.setSelectedSpot(spot)
   } else if (!store.endSpot) {
     store.setEndSpot(spot)
+    store.setSelectedSpot(spot)
   } else {
     store.setEndSpot(spot)
+    store.setSelectedSpot(spot)
   }
 }
 
@@ -182,20 +194,82 @@ function renderMarkers() {
 function renderRoute() {
   if (!mapInstance) return
 
-  if (routeLayer) {
-    mapInstance.removeLayer(routeLayer)
-    routeLayer = null
-  }
+  stopRouteAnimation()
+  clearRouteLayer()
 
-  if (!store.hasRoute) return
+  const validCoords = getValidRouteCoords()
+  if (validCoords.length <= 1) return
 
-  routeLayer = L.polyline(store.routeCoords, {
+  routeLayer = L.polyline([], {
     color: '#f97316',
     weight: 5,
     opacity: 0.9,
   }).addTo(mapInstance)
 
-  mapInstance.fitBounds(routeLayer.getBounds(), { padding: [30, 30] })
+  const routeBounds = L.latLngBounds(validCoords)
+  mapInstance.fitBounds(routeBounds, { padding: [30, 30] })
+  startRouteAnimation(validCoords)
+}
+
+function getValidRouteCoords() {
+  return store.routeCoords
+    .filter(
+      (coord) =>
+        Array.isArray(coord) &&
+        coord.length >= 2 &&
+        Number.isFinite(Number(coord[0])) &&
+        Number.isFinite(Number(coord[1]))
+    )
+    .map((coord) => [Number(coord[0]), Number(coord[1])])
+}
+
+function clearRouteLayer() {
+  if (!routeLayer || !mapInstance) return
+  mapInstance.removeLayer(routeLayer)
+  routeLayer = null
+}
+
+function stopRouteAnimation() {
+  routeAnimationToken += 1
+  if (routeAnimationFrame !== null) {
+    cancelAnimationFrame(routeAnimationFrame)
+    routeAnimationFrame = null
+  }
+}
+
+function startRouteAnimation(validCoords) {
+  if (!routeLayer) return
+
+  const totalPoints = validCoords.length
+  if (totalPoints <= 2) {
+    routeLayer.setLatLngs(validCoords)
+    return
+  }
+
+  const pointsPerFrame = Math.max(
+    ROUTE_ANIMATION_MIN_POINTS_PER_FRAME,
+    Math.ceil((totalPoints - 2) / ROUTE_ANIMATION_TARGET_FRAMES)
+  )
+
+  let drawnCount = 2
+  const token = ++routeAnimationToken
+
+  routeLayer.setLatLngs(validCoords.slice(0, drawnCount))
+
+  const drawNextFrame = () => {
+    if (token !== routeAnimationToken || !routeLayer) return
+
+    drawnCount = Math.min(totalPoints, drawnCount + pointsPerFrame)
+    routeLayer.setLatLngs(validCoords.slice(0, drawnCount))
+
+    if (drawnCount < totalPoints) {
+      routeAnimationFrame = requestAnimationFrame(drawNextFrame)
+      return
+    }
+    routeAnimationFrame = null
+  }
+
+  routeAnimationFrame = requestAnimationFrame(drawNextFrame)
 }
 
 async function retryLoad() {

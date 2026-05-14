@@ -22,6 +22,15 @@
               <span class="char-count">{{ formData.title.length }}/100</span>
             </div>
 
+            <!-- 日记范围 -->
+            <div class="form-group">
+              <label>日记范围 <span class="required">*</span></label>
+              <select v-model="formData.scope">
+                <option value="campus">校园景点</option>
+                <option value="national">全国景点</option>
+              </select>
+            </div>
+
             <!-- 景点选择 -->
             <div class="form-group">
               <label>关联{{ scopeLabel }} <span class="required">*</span></label>
@@ -98,15 +107,7 @@ import { useDiaryStore } from '../stores/diary'
 import { api } from '../api'
 
 const props = defineProps({
-  show: Boolean,
-  scope: {
-    type: String,
-    default: 'campus'
-  },
-  presetSpotId: {
-    type: Number,
-    default: null
-  }
+  show: Boolean
 })
 
 const emit = defineEmits(['update:show', 'success'])
@@ -118,13 +119,14 @@ const submitting = ref(false)
 const uploadingImages = ref(false)
 
 const formData = ref({
+  scope: 'campus',
   title: '',
   spot_id: null,
   content: '',
   media_files: []
 })
 
-const isNationalScope = computed(() => props.scope === 'national')
+const isNationalScope = computed(() => formData.value.scope === 'national')
 const scopeLabel = computed(() => (isNationalScope.value ? '全国景点' : '校园景点'))
 
 // 表单验证
@@ -137,17 +139,16 @@ const isFormValid = computed(() => {
 // 加载景点列表
 onMounted(async () => {
   await loadSpots()
-  applyPresetSpot()
 })
 
-watch(() => props.scope, async () => {
+watch(() => formData.value.scope, async () => {
+  formData.value.spot_id = null
   await loadSpots()
-  applyPresetSpot()
 })
 
-watch(() => props.show, (show) => {
+watch(() => props.show, async (show) => {
   if (show) {
-    applyPresetSpot()
+    await loadSpots()
   }
 })
 
@@ -163,14 +164,6 @@ async function loadSpots() {
     console.error('加载景点失败:', error)
     spots.value = []
   }
-}
-
-function applyPresetSpot() {
-  if (typeof props.presetSpotId === 'number' && props.presetSpotId > 0) {
-    formData.value.spot_id = props.presetSpotId
-    return
-  }
-  formData.value.spot_id = null
 }
 
 // 文件选择处理
@@ -235,7 +228,7 @@ async function handleSubmit() {
   
   try {
     const payload = {
-      scope: props.scope,
+      scope: formData.value.scope,
       title: formData.value.title.trim(),
       content: formData.value.content.trim(),
       media_files: formData.value.media_files
@@ -251,6 +244,7 @@ async function handleSubmit() {
     
     // 重置表单
     formData.value = {
+      scope: 'campus',
       title: '',
       spot_id: null,
       content: '',

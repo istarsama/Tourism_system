@@ -1,13 +1,5 @@
 <template>
   <div class="diary-panel">
-    <!-- 景点过滤提示 -->
-    <div v-if="spotId" class="spot-filter-hint">
-      <span>正在查看该景点的日记</span>
-      <button class="btn-sm btn-outline" @click="$emit('clear-spot-filter')">
-        查看全部日记
-      </button>
-    </div>
-
     <!-- 搜索与筛选 -->
     <div class="diary-controls">
       <div class="search-box">
@@ -79,65 +71,41 @@
 
     <CreateDiaryModal
       v-model:show="showCreateModal"
-      :scope="publishScope"
-      :preset-spot-id="spotId ?? null"
       @success="handleCreateSuccess"
     />
   </div>
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useDiaryStore } from '../stores/diary'
 import { useAuthStore } from '../stores/auth'
-import { useMapStore } from '../stores/map'
 import DiaryDetailModal from './DiaryDetailModal.vue'
 import CreateDiaryModal from './CreateDiaryModal.vue'
 
-const props = defineProps({
-  spotId: Number  // 如果传入了景点ID，则只显示该景点的日记
-})
-
-const emit = defineEmits(['clear-spot-filter'])
-
 const diaryStore = useDiaryStore()
 const authStore = useAuthStore()
-const mapStore = useMapStore()
 const searchQuery = ref('')
 const sortBy = ref('latest')
 const showDetailModal = ref(false)
 const showCreateModal = ref(false)
 const selectedDiaryId = ref(null)
-const publishScope = computed(() => (mapStore.activeScope === 'national' ? 'national' : 'campus'))
 
 onMounted(() => {
-  loadDiaries()
-})
-
-watch(() => props.spotId, () => {
-  loadDiaries()
-})
-
-watch(() => mapStore.activeScope, () => {
   loadDiaries()
 })
 
 async function loadDiaries() {
   const params = {
     sort_by: sortBy.value,
-    scope: publishScope.value
+    scope: 'all'
   }
   
   if (searchQuery.value) {
     params.keyword = searchQuery.value
   }
-  
-  // 如果指定了景点ID，使用景点日记接口
-  if (props.spotId) {
-    await diaryStore.loadSpotDiaries(props.spotId, params)
-  } else {
-    await diaryStore.loadDiaries(params)
-  }
+
+  await diaryStore.loadDiaries(params)
 }
 
 function handleSearch() {
@@ -159,18 +127,6 @@ async function handleCreateSuccess() {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.spot-filter-hint {
-  background: #dbeafe;
-  border: 1px solid #93c5fd;
-  border-radius: 6px;
-  padding: 10px 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-  color: #1e40af;
 }
 
 .diary-controls {

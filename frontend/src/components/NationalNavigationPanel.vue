@@ -36,7 +36,7 @@
               @change="handleStartChange"
             >
               <option value="">请选择起点</option>
-              <option v-for="spot in sortedSpots" :key="spot.id" :value="spot.id">
+              <option v-for="spot in startOptions" :key="spot.id" :value="spot.id">
                 {{ spot.name }}（{{ spot.city }}）
               </option>
             </select>
@@ -50,11 +50,22 @@
               @change="handleEndChange"
             >
               <option value="">请选择终点</option>
-              <option v-for="spot in sortedSpots" :key="`end-${spot.id}`" :value="spot.id">
+              <option v-for="spot in endOptions" :key="`end-${spot.id}`" :value="spot.id">
                 {{ spot.name }}（{{ spot.city }}）
               </option>
             </select>
           </div>
+
+          <p class="text-xs text-gray-500">
+            仅支持同城导航
+            <span v-if="constraintCity">（当前城市：{{ constraintCity }}）</span>
+          </p>
+          <p
+            v-if="store.startSpot && store.endSpot && !store.sameCitySelected"
+            class="text-xs text-amber-600"
+          >
+            当前起终点不在同一城市，点击“开始校外导航”会提示不可规划。
+          </p>
 
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">交通方式</label>
@@ -71,6 +82,7 @@
             <button
               class="px-3 py-2 rounded-lg bg-bupt-blue text-white text-sm font-semibold disabled:opacity-50"
               :disabled="!store.canNavigate || store.routeLoading"
+              :title="!store.canNavigate ? store.canNavigateHint : (!store.sameCitySelected ? '当前仅支持同城导航' : '')"
               @click="handleNavigate"
             >
               {{ store.routeLoading ? '规划中...' : '开始校外导航' }}
@@ -94,8 +106,10 @@
       <h4 class="text-sm font-bold text-bupt-blue mb-2">路线结果</h4>
       <div class="text-sm text-gray-700 space-y-1">
         <p>城市：{{ store.routeCity || store.startSpot?.city || '-' }}</p>
+        <p>交通方式：{{ store.routeTransport === 'bike' ? '骑行' : '步行' }}</p>
         <p>总距离：{{ formatDistance(store.totalDistanceM) }}</p>
         <p>预计耗时：{{ formatDuration(store.estimatedDurationS) }}</p>
+        <p>路段数：{{ store.segmentCount }}</p>
         <p>节点数：{{ store.nodeIds.length }}</p>
       </div>
     </div>
@@ -104,7 +118,7 @@
       <h4 class="text-sm font-bold text-emerald-700 mb-1">{{ store.selectedSpot.name }}</h4>
       <p class="text-xs text-gray-600 mb-2">{{ store.selectedSpot.city }} · {{ store.selectedSpot.type }}</p>
       <p class="text-xs text-gray-600 mb-3">{{ store.selectedSpot.description || '暂无描述' }}</p>
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-2 gap-2 mb-2">
         <button class="px-2 py-1.5 text-xs rounded-md bg-emerald-100 text-emerald-700" @click="store.setStartSpot(store.selectedSpot)">
           设为起点
         </button>
@@ -112,16 +126,110 @@
           设为终点
         </button>
       </div>
+      <button
+        class="w-full px-2 py-1.5 text-xs rounded-md bg-blue-100 text-bupt-blue font-semibold"
+        @click="$emit('view-diaries')"
+      >
+        查看社区日记
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { api } from '../api'
 import { useNationalMapStore } from '../stores/nationalMap'
+
+defineEmits(['view-diaries'])
 
 const store = useNationalMapStore()
 const transport = ref('walk')
+
+function toFiniteNumber(value, fallback = 0) {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : fallback
+}
+
+function normalizeCoords(coords) {
+  if (!Array.isArray(coords)) return []
+  return coords
+    .map((coord) => {
+      if (!Array.isArray(coord) || coord.length < 2) return null
+      const lat = toFiniteNumber(coord[0], NaN)
+      const lng = toFiniteNumber(coord[1], NaN)
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+      return [lat, lng]
+    })
+    .filter(Boolean)
+}
+
+function normalizeNumberArray(values) {
+  if (!Array.isArray(values)) return []
+  return values
+    .map((value) => toFiniteNumber(value, NaN))
+    .filter((value) => Number.isFinite(value))
+}
+
+function normalizeNodeIds(values) {
+  if (!Array.isArray(values)) return []
+  return values
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value))
+}
+
+async function navigateOsmFallback(transportMode) {
+  if (!store.canNavigate) {
+    store.routeError = store.canNavigateHint
+    return null
+  }
+  if (!store.sameCitySelected) {
+    store.routeError = '当前仅支持同城导航，请选择同一城市的景点'
+    return null
+  }
+  if (store.routeLoading) {
+    return null
+  }
+
+  const startSpotId = store.startSpot?.id
+  const endSpotId = store.endSpot?.id
+  if (!startSpotId || !endSpotId) {
+    store.routeError = '请选择起点和终点'
+    return null
+  }
+
+  const resolvedTransport = transportMode === 'bike' ? 'bike' : 'walk'
+  store.routeLoading = true
+  store.routeError = null
+
+  try {
+    const result = await api.navigateOsm({
+      start_spot_id: startSpotId,
+      end_spot_id: endSpotId,
+      transport: resolvedTransport,
+    })
+    const segmentDistancesM = normalizeNumberArray(result?.segment_distances_m)
+    const segmentCount = Math.max(0, Math.round(toFiniteNumber(result?.segment_count, segmentDistancesM.length)))
+
+    store.routeCoords = normalizeCoords(result?.path_coords)
+    store.nodeIds = normalizeNodeIds(result?.node_ids)
+    store.totalDistanceM = toFiniteNumber(result?.total_distance_m, 0)
+    store.segmentCount = segmentCount
+    store.segmentDistancesM = segmentDistancesM
+    store.estimatedDurationS = toFiniteNumber(result?.estimated_duration_s, 0)
+    store.routeCity = typeof result?.city === 'string' ? result.city : (store.startSpot?.city || '')
+    store.routeTransport =
+      result?.transport === 'bike' || result?.transport === 'walk'
+        ? result.transport
+        : resolvedTransport
+    return result
+  } catch (error) {
+    store.routeError = error?.message || '导航请求失败'
+    throw error
+  } finally {
+    store.routeLoading = false
+  }
+}
 
 const sortedSpots = computed(() => {
   return [...store.spots].sort((a, b) => {
@@ -129,6 +237,18 @@ const sortedSpots = computed(() => {
     if (cityComp !== 0) return cityComp
     return a.name.localeCompare(b.name, 'zh-Hans-CN')
   })
+})
+
+const constraintCity = computed(() => store.startSpot?.city || store.endSpot?.city || '')
+
+const startOptions = computed(() => {
+  if (!store.endSpot?.city) return sortedSpots.value
+  return sortedSpots.value.filter((spot) => spot.city === store.endSpot.city || spot.id === store.startSpot?.id)
+})
+
+const endOptions = computed(() => {
+  if (!store.startSpot?.city) return sortedSpots.value
+  return sortedSpots.value.filter((spot) => spot.city === store.startSpot.city || spot.id === store.endSpot?.id)
 })
 
 onMounted(async () => {
@@ -159,13 +279,18 @@ function handleEndChange(event) {
 
 async function handleNavigate() {
   try {
-    await store.navigateOsm(transport.value)
+    const navigate =
+      typeof store.navigateOsm === 'function'
+        ? store.navigateOsm.bind(store)
+        : navigateOsmFallback
+    await navigate(transport.value)
   } catch (error) {
     console.error('OSM navigation failed:', error)
   }
 }
 
 function handleReset() {
+  transport.value = 'walk'
   store.resetSelections()
 }
 

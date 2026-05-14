@@ -68,6 +68,18 @@ export const useDiaryStore = defineStore('diary', () => {
     }
   }
 
+  // 按景点查询日记（无全局副作用）
+  // 与 loadSpotDiaries 不同：不覆盖 store.diaries，便于局部弹窗场景复用
+  async function fetchSpotDiaries(spotId, params = {}) {
+    try {
+      const data = await api.getSpotDiaries(spotId, params)
+      return Array.isArray(data) ? data : []
+    } catch (err) {
+      console.error('Failed to fetch spot diaries:', err)
+      throw err
+    }
+  }
+
   // 加载单个日记详情
   // 调用后端: GET /diaries/detail/{id}
   // 参数: id-日记ID
@@ -149,6 +161,7 @@ export const useDiaryStore = defineStore('diary', () => {
     error,          // 错误信息
     loadDiaries,    // 加载日记列表
     loadSpotDiaries,// 加载景点日记
+    fetchSpotDiaries, // 查询景点日记（不更新全局列表）
     loadDiary,      // 加载日记详情
     createDiary,    // 创建日记
     loadComments,   // 加载评论

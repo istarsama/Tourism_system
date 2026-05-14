@@ -101,12 +101,11 @@
                 </div>
                 <NavigationPanel
                   v-if="mapStore.activeScope === 'campus'"
-                  @view-spot-diaries="handleViewSpotDiaries"
                 />
-                <NationalNavigationPanel v-else />
+                <NationalNavigationPanel v-else @view-diaries="handleOpenDiary" />
               </div>
               <div v-else key="diary">
-                <DiaryPanel :spot-id="selectedSpotId" @clear-spot-filter="handleClearSpotFilter" />
+                <DiaryPanel />
               </div>
             </Transition>
           </div>
@@ -141,10 +140,6 @@ const route = useRoute()
 const router = useRouter()
 const mapStore = useMapStore()
 const activeTab = computed(() => (route.name === 'Diary' ? 'diary' : 'nav'))
-const selectedSpotId = computed(() => {
-  const spotId = Number(route.query.spotId)
-  return Number.isInteger(spotId) && spotId > 0 ? spotId : null
-})
 
 watch(
   () => route.query.scope,
@@ -184,19 +179,8 @@ function toggleSidebar() {
   isOpen.value = !isOpen.value
 }
 
-function handleViewSpotDiaries(spotId) {
-  mapStore.setActiveScope('campus')
+function handleOpenDiary() {
   router.push({
-    name: 'Diary',
-    query: {
-      scope: 'campus',
-      spotId: String(spotId)
-    }
-  })
-}
-
-function handleClearSpotFilter() {
-  router.replace({
     name: 'Diary',
     query: {
       scope: mapStore.activeScope
@@ -215,13 +199,9 @@ function switchMapScope(scope) {
 }
 
 function switchTab(tab) {
-  const query = { scope: mapStore.activeScope }
-  if (tab === 'diary' && selectedSpotId.value) {
-    query.spotId = String(selectedSpotId.value)
-  }
   router.push({
     name: tab === 'diary' ? 'Diary' : 'Navigation',
-    query
+    query: { scope: mapStore.activeScope }
   })
 }
 </script>

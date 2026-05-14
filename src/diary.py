@@ -3,7 +3,7 @@ from time import perf_counter
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select, or_
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime
 from loguru import logger
 
@@ -77,9 +77,45 @@ def _build_diary_read(session: Session, diary: Diary) -> DiaryRead:
         content=diary.content,
         score=diary.score,
         view_count=diary.view_count,
-        media_files=json.loads(diary.media_json) if diary.media_json else [],
+        media_files=_parse_media_files(diary.media_json, diary.id),
         created_at=diary.created_at,
     )
+
+
+def _parse_media_files(raw_media: Any, diary_id: Optional[int]) -> List[str]:
+    if raw_media in (None, ""):
+        return []
+
+    if isinstance(raw_media, list):
+        return [item for item in raw_media if isinstance(item, str)]
+
+    if not isinstance(raw_media, str):
+        logger.warning(
+            "日记 media_json 类型异常 diary_id={} media_type={}",
+            diary_id,
+            type(raw_media).__name__,
+        )
+        return []
+
+    try:
+        parsed = json.loads(raw_media)
+    except json.JSONDecodeError as exc:
+        logger.warning(
+            "日记 media_json 解析失败 diary_id={} error={}",
+            diary_id,
+            str(exc),
+        )
+        return []
+
+    if isinstance(parsed, list):
+        return [item for item in parsed if isinstance(item, str)]
+
+    logger.warning(
+        "日记 media_json 解析结果不是列表 diary_id={} parsed_type={}",
+        diary_id,
+        type(parsed).__name__,
+    )
+    return []
 
 # ==========================================
 # 接口逻辑

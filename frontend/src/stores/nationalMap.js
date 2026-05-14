@@ -2,6 +2,69 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { api } from '../api'
 
+const DEFAULT_TRANSPORT = 'walk'
+
+function toFiniteNumber(value, fallback = 0) {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : fallback
+}
+
+function normalizeCoords(coords) {
+  if (!Array.isArray(coords)) return []
+  return coords
+    .map((coord) => {
+      if (!Array.isArray(coord) || coord.length < 2) return null
+      const lat = toFiniteNumber(coord[0], NaN)
+      const lng = toFiniteNumber(coord[1], NaN)
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+      return [lat, lng]
+    })
+    .filter(Boolean)
+}
+
+function normalizeNumberArray(values) {
+  if (!Array.isArray(values)) return []
+  return values
+    .map((value) => toFiniteNumber(value, NaN))
+    .filter((value) => Number.isFinite(value))
+}
+
+function normalizeNodeIds(values) {
+  if (!Array.isArray(values)) return []
+  return values
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value))
+}
+
+function normalizeRouteResult(result, fallbackTransport = DEFAULT_TRANSPORT) {
+  const segmentDistancesM = normalizeNumberArray(result?.segment_distances_m)
+  const segmentCount = Math.max(
+    0,
+    Math.round(toFiniteNumber(result?.segment_count, segmentDistancesM.length))
+  )
+  const transport =
+    result?.transport === 'bike' || result?.transport === 'walk'
+      ? result.transport
+      : fallbackTransport
+
+  return {
+    city: typeof result?.city === 'string' ? result.city : '',
+    transport,
+    nodeIds: normalizeNodeIds(result?.node_ids),
+    pathCoords: normalizeCoords(result?.path_coords),
+    totalDistanceM: toFiniteNumber(result?.total_distance_m, 0),
+    segmentCount,
+    segmentDistancesM,
+    estimatedDurationS: toFiniteNumber(result?.estimated_duration_s, 0),
+    raw: result,
+  }
+}
+
+function isSameCity(start, end) {
+  if (!start || !end) return true
+  return start.city === end.city
+}
+
 export const useNationalMapStore = defineStore('nationalMap', () => {
   const modeConfig = ref(null)
   const modeLoading = ref(false)
@@ -18,15 +81,28 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
   const routeCoords = ref([])
   const nodeIds = ref([])
   const totalDistanceM = ref(0)
+  const segmentCount = ref(0)
+  const segmentDistancesM = ref([])
   const estimatedDurationS = ref(0)
   const routeCity = ref('')
-  const routeTransport = ref('walk')
+  const routeTransport = ref(DEFAULT_TRANSPORT)
   const routeLoading = ref(false)
   const routeError = ref(null)
+  const activeRouteRequestId = ref(0)
 
   const isInitializing = ref(false)
 
-  const canNavigate = computed(() => startSpot.value && endSpot.value)
+  const sameCitySelected = computed(() => isSameCity(startSpot.value, endSpot.value))
+  const canNavigate = computed(() => {
+    if (!startSpot.value || !endSpot.value) return false
+    if (startSpot.value.id === endSpot.value.id) return false
+    return true
+  })
+  const canNavigateHint = computed(() => {
+    if (!startSpot.value || !endSpot.value) return '请选择起点和终点'
+    if (startSpot.value.id === endSpot.value.id) return '起点和终点不能相同'
+    return ''
+  })
   const hasRoute = computed(() => routeCoords.value.length > 1)
   const supportsSlippyMap = computed(() => !!modeConfig.value?.supports_slippy_map)
   const hasSpots = computed(() => spots.value.length > 0)
@@ -92,25 +168,30 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
   }
 
   function resetRoute() {
+    activeRouteRequestId.value += 1
     routeCoords.value = []
     nodeIds.value = []
     totalDistanceM.value = 0
+    segmentCount.value = 0
+    segmentDistancesM.value = []
     estimatedDurationS.value = 0
     routeCity.value = ''
+    routeTransport.value = DEFAULT_TRANSPORT
     routeError.value = null
+    routeLoading.value = false
   }
 
   function setStartSpot(spot) {
-    startSpot.value = spot
-    if (spot && endSpot.value && endSpot.value.id === spot.id) {
+    startSpot.value = spot || null
+    if (startSpot.value && endSpot.value && endSpot.value.id === startSpot.value.id) {
       endSpot.value = null
     }
     resetRoute()
   }
 
   function setEndSpot(spot) {
-    endSpot.value = spot
-    if (spot && startSpot.value && startSpot.value.id === spot.id) {
+    endSpot.value = spot || null
+    if (endSpot.value && startSpot.value && startSpot.value.id === endSpot.value.id) {
       startSpot.value = null
     }
     resetRoute()
@@ -131,8 +212,21 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
     resetRoute()
   }
 
-  async function navigateOsm(transport = 'walk') {
-    if (!canNavigate.value) return null
+  async function navigateOsm(transport = DEFAULT_TRANSPORT) {
+    if (!canNavigate.value) {
+      routeError.value = canNavigateHint.value
+      return null
+    }
+    if (!sameCitySelected.value) {
+      routeError.value = '当前仅支持同城导航，请选择同一城市的景点'
+      return null
+    }
+    if (routeLoading.value) {
+      return null
+    }
+
+    const requestId = activeRouteRequestId.value + 1
+    activeRouteRequestId.value = requestId
 
     routeLoading.value = true
     routeError.value = null
@@ -143,18 +237,29 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
         transport,
       })
 
-      routeCoords.value = result.path_coords || []
-      nodeIds.value = result.node_ids || []
-      totalDistanceM.value = result.total_distance_m || 0
-      estimatedDurationS.value = result.estimated_duration_s || 0
-      routeCity.value = result.city || ''
-      routeTransport.value = result.transport || transport
-      return result
+      if (requestId !== activeRouteRequestId.value) {
+        return null
+      }
+
+      const normalized = normalizeRouteResult(result, transport)
+      routeCoords.value = normalized.pathCoords
+      nodeIds.value = normalized.nodeIds
+      totalDistanceM.value = normalized.totalDistanceM
+      segmentCount.value = normalized.segmentCount
+      segmentDistancesM.value = normalized.segmentDistancesM
+      estimatedDurationS.value = normalized.estimatedDurationS
+      routeCity.value = normalized.city || startSpot.value?.city || ''
+      routeTransport.value = normalized.transport
+      return normalized.raw
     } catch (err) {
-      routeError.value = err.message
+      if (requestId === activeRouteRequestId.value) {
+        routeError.value = err.message
+      }
       throw err
     } finally {
-      routeLoading.value = false
+      if (requestId === activeRouteRequestId.value) {
+        routeLoading.value = false
+      }
     }
   }
 
@@ -171,6 +276,8 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
     routeCoords,
     nodeIds,
     totalDistanceM,
+    segmentCount,
+    segmentDistancesM,
     estimatedDurationS,
     routeCity,
     routeTransport,
@@ -178,12 +285,16 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
     routeError,
     isInitializing,
     canNavigate,
+    canNavigateHint,
+    sameCitySelected,
     hasRoute,
     supportsSlippyMap,
     hasSpots,
     initialize,
     loadModeConfig,
     loadNationalSpots,
+    navigate: navigateOsm,
+    navigateOsm,
     setSelectedSpot,
     setStartSpot,
     setEndSpot,
