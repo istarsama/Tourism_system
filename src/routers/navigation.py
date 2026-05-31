@@ -2,14 +2,16 @@
 导航路由：/navigate（校园 Dijkstra）、/navigate/osm（全国 OSM 路网）
 """
 
+import json
+from datetime import datetime
 from time import perf_counter
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from algorithms import dijkstra_search, plan_multi_point_route
 from database import get_session
-from models import NationalSpot
+from models import NationalSpot, RouteCache
 from schemas.navigation import (
     NavigateRequest,
     NavigateResponse,
@@ -20,6 +22,65 @@ from services.map_service import get_graph, get_osm_service
 from loguru import logger
 
 router = APIRouter(tags=["导航"])
+OSM_ROUTE_CACHE_PREFIX = "osm:v1"
+
+
+def _build_osm_route_cache_key(city: str, transport: str, start_spot_id: int, end_spot_id: int) -> str:
+    return f"{OSM_ROUTE_CACHE_PREFIX}:{city}:{transport}:{start_spot_id}:{end_spot_id}"
+
+
+def _get_cached_osm_route(session: Session, cache_key: str) -> dict | None:
+    cache = session.exec(select(RouteCache).where(RouteCache.cache_key == cache_key)).first()
+    if cache is None:
+        return None
+
+    if cache.expires_at is not None and cache.expires_at <= datetime.now():
+        session.delete(cache)
+        session.commit()
+        return None
+
+    try:
+        route = json.loads(cache.route_json)
+        required_fields = {
+            "city",
+            "transport",
+            "start_spot_id",
+            "end_spot_id",
+            "node_ids",
+            "path_coords",
+            "total_distance_m",
+            "segment_count",
+            "segment_distances_m",
+            "estimated_duration_s",
+        }
+        if not required_fields.issubset(route):
+            raise ValueError("缓存缺少必要字段")
+        return route
+    except (TypeError, ValueError, json.JSONDecodeError) as exc:
+        logger.warning("OSM 路线缓存损坏，将删除后重新计算: cache_key={} error={}", cache_key, exc)
+        session.delete(cache)
+        session.commit()
+        return None
+
+
+def _save_osm_route_cache(session: Session, cache_key: str, response: dict) -> None:
+    try:
+        cache = session.exec(select(RouteCache).where(RouteCache.cache_key == cache_key)).first()
+        if cache is None:
+            cache = RouteCache(cache_key=cache_key)
+
+        cache.mode = "osm"
+        cache.provider = "osmnx"
+        cache.distance_m = float(response["total_distance_m"])
+        cache.duration_s = float(response["estimated_duration_s"])
+        cache.route_json = json.dumps(response, ensure_ascii=False)
+        cache.created_at = datetime.now()
+        cache.expires_at = None
+        session.add(cache)
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        logger.warning("OSM 路线结果缓存写入失败，不影响本次导航: cache_key={} error={}", cache_key, exc)
 
 
 @router.post("/navigate", response_model=NavigateResponse)
@@ -112,6 +173,22 @@ def navigate_osm(request: OSMNavigateRequest, session: Session = Depends(get_ses
         end_spot.longitude,
     )
 
+    route_cache_key = _build_osm_route_cache_key(
+        start_spot.city,
+        request.transport,
+        request.start_spot_id,
+        request.end_spot_id,
+    )
+    cached_response = _get_cached_osm_route(session, route_cache_key)
+    if cached_response is not None:
+        logger.info(
+            "命中 OSM 路线结果缓存 cache_key={} elapsed_ms={:.2f}",
+            route_cache_key,
+            (perf_counter() - started_at) * 1000,
+        )
+        return cached_response
+
+    logger.info("未命中 OSM 路线结果缓存 cache_key={}", route_cache_key)
     osm_service = get_osm_service()
     try:
         result = osm_service.route_planning(
@@ -162,6 +239,7 @@ def navigate_osm(request: OSMNavigateRequest, session: Session = Depends(get_ses
         "segment_distances_m": segment_distances_m,
         "estimated_duration_s": estimated_duration_s,
     }
+    _save_osm_route_cache(session, route_cache_key, response)
 
     elapsed_ms = (perf_counter() - started_at) * 1000
     logger.info(

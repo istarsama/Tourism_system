@@ -2,7 +2,7 @@ from typing import Dict, Optional, List
 from datetime import datetime
 from uuid import uuid4
 from sqlmodel import SQLModel, Field
-from sqlalchemy import UniqueConstraint, Index
+from sqlalchemy import Column, Index, Text, UniqueConstraint
 
 # ==========================================
 # 景点与地图相关模型 
@@ -200,6 +200,27 @@ class RouteCache(SQLModel, table=True):
     route_json: str = Field(default="{}")
     created_at: datetime = Field(default_factory=datetime.now)
     expires_at: Optional[datetime] = Field(default=None, index=True)
+
+
+class OSMGraphCache(SQLModel, table=True):
+    """OSM 城市路网 GraphML 文件的元数据。"""
+    __tablename__ = "osm_graph_cache"
+    __table_args__ = (
+        UniqueConstraint("city", "transport", name="uq_osm_graph_cache_city_transport"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    city: str = Field(index=True)
+    transport: str = Field(index=True)
+    place_query: str
+    graph_path: str
+    node_count: int = Field(default=0)
+    edge_count: int = Field(default=0)
+    file_size_bytes: int = Field(default=0)
+    status: str = Field(default="ready", index=True)
+    last_error: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    downloaded_at: Optional[datetime] = None
+    updated_at: datetime = Field(default_factory=datetime.now)
 
 
 class NationalSpot(SQLModel, table=True):

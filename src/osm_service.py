@@ -1,12 +1,22 @@
 from __future__ import annotations
 
-from functools import lru_cache
+import hashlib
+import os
+from collections import OrderedDict
+from datetime import datetime
+from pathlib import Path
+from threading import RLock
 from time import perf_counter
-from typing import TypedDict
+from typing import Any, Callable, TypedDict
 
 import networkx as nx
 import osmnx as ox
 from loguru import logger
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_GRAPH_CACHE_DIR = PROJECT_ROOT / "data" / "osm_graphs"
+DEFAULT_HTTP_CACHE_DIR = PROJECT_ROOT / "data" / "osmnx_cache"
 
 
 class OSMRoutePlanResult(TypedDict):
@@ -20,8 +30,47 @@ class OSMRoutePlanResult(TypedDict):
     estimated_duration_s: float
 
 
+def _persist_graph_cache_metadata(**metadata: Any) -> None:
+    """Best-effort metadata persistence. Graph routing must not depend on the DB write."""
+    try:
+        from sqlmodel import Session, select
+
+        from database import engine
+        from models import OSMGraphCache
+
+        with Session(engine) as session:
+            cache = session.exec(
+                select(OSMGraphCache).where(
+                    OSMGraphCache.city == metadata["city"],
+                    OSMGraphCache.transport == metadata["transport"],
+                )
+            ).first()
+            if cache is None:
+                cache = OSMGraphCache(
+                    city=metadata["city"],
+                    transport=metadata["transport"],
+                    place_query=metadata["place_query"],
+                    graph_path=metadata["graph_path"],
+                )
+
+            cache.place_query = metadata["place_query"]
+            cache.graph_path = metadata["graph_path"]
+            cache.node_count = metadata.get("node_count", 0)
+            cache.edge_count = metadata.get("edge_count", 0)
+            cache.file_size_bytes = metadata.get("file_size_bytes", 0)
+            cache.status = metadata["status"]
+            cache.last_error = metadata.get("last_error")
+            if metadata.get("downloaded_at") is not None:
+                cache.downloaded_at = metadata["downloaded_at"]
+            cache.updated_at = datetime.now()
+            session.add(cache)
+            session.commit()
+    except Exception as exc:
+        logger.warning("OSM 路网缓存元数据写入失败，不影响导航: {}", exc)
+
+
 class OSMService:
-    """OSM 路网服务：按城市缓存路网并提供最短路径规划。"""
+    """OSM 路网服务：内存 LRU -> GraphML 文件 -> OSMnx 联网下载。"""
 
     _PLACE_ALIASES = {
         "北京": ("Beijing, China", "北京市, China", "北京, China"),
@@ -30,6 +79,25 @@ class OSMService:
         "杭州": ("Hangzhou, Zhejiang, China", "杭州市, China", "杭州, China"),
         "厦门": ("Xiamen, Fujian, China", "厦门市, China", "厦门, China"),
     }
+
+    def __init__(
+        self,
+        cache_dir: str | Path | None = None,
+        metadata_writer: Callable[..., None] | None = None,
+        max_memory_cache_size: int = 32,
+    ) -> None:
+        configured_cache_dir = cache_dir or os.getenv("OSM_GRAPH_CACHE_DIR")
+        self.cache_dir = Path(configured_cache_dir or DEFAULT_GRAPH_CACHE_DIR)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self._metadata_writer = metadata_writer or _persist_graph_cache_metadata
+        self._memory_cache: OrderedDict[tuple[str, str], nx.MultiDiGraph] = OrderedDict()
+        self._max_memory_cache_size = max_memory_cache_size
+        self._graph_cache_lock = RLock()
+
+        http_cache_dir = Path(os.getenv("OSMNX_HTTP_CACHE_DIR", str(DEFAULT_HTTP_CACHE_DIR)))
+        http_cache_dir.mkdir(parents=True, exist_ok=True)
+        ox.settings.use_cache = True
+        ox.settings.cache_folder = str(http_cache_dir)
 
     def _to_network_type(self, transport: str) -> str:
         if transport == "walk":
@@ -46,14 +114,149 @@ class OSMService:
             return self._PLACE_ALIASES[city]
         return (f"{city}, China",)
 
-    @lru_cache(maxsize=32)
-    def get_city_graph(self, city_name: str, transport: str = "walk") -> nx.MultiDiGraph:
-        network_type = self._to_network_type(transport)
-        candidates = self._place_candidates(city_name)
-        last_error: Exception | None = None
+    def get_graph_cache_path(self, city_name: str, transport: str = "walk") -> Path:
+        city = city_name.strip()
+        self._to_network_type(transport)
+        digest = hashlib.sha256(city.encode("utf-8")).hexdigest()[:16]
+        return self.cache_dir / f"{digest}_{transport}.graphml"
 
+    def get_graph_cache_info(self, city_name: str, transport: str = "walk") -> dict[str, Any]:
+        path = self.get_graph_cache_path(city_name, transport)
+        return {
+            "city": city_name.strip(),
+            "transport": transport,
+            "graph_path": str(path),
+            "exists": path.exists(),
+            "file_size_bytes": path.stat().st_size if path.exists() else 0,
+        }
+
+    def clear_memory_cache(self, city_name: str | None = None, transport: str | None = None) -> None:
+        with self._graph_cache_lock:
+            if city_name is None and transport is None:
+                self._memory_cache.clear()
+                return
+
+            city = city_name.strip() if city_name else None
+            keys_to_remove = [
+                key
+                for key in self._memory_cache
+                if (city is None or key[0] == city) and (transport is None or key[1] == transport)
+            ]
+            for key in keys_to_remove:
+                self._memory_cache.pop(key, None)
+
+    def _remember_graph(self, city_name: str, transport: str, graph: nx.MultiDiGraph) -> None:
+        key = (city_name, transport)
+        self._memory_cache.pop(key, None)
+        self._memory_cache[key] = graph
+        while len(self._memory_cache) > self._max_memory_cache_size:
+            self._memory_cache.popitem(last=False)
+
+    def _record_metadata(
+        self,
+        *,
+        city: str,
+        transport: str,
+        place_query: str,
+        graph_path: Path,
+        status: str,
+        graph: nx.MultiDiGraph | None = None,
+        last_error: str | None = None,
+        downloaded_at: datetime | None = None,
+    ) -> None:
+        try:
+            self._metadata_writer(
+                city=city,
+                transport=transport,
+                place_query=place_query,
+                graph_path=str(graph_path),
+                node_count=graph.number_of_nodes() if graph is not None else 0,
+                edge_count=graph.number_of_edges() if graph is not None else 0,
+                file_size_bytes=graph_path.stat().st_size if graph_path.exists() else 0,
+                status=status,
+                last_error=last_error,
+                downloaded_at=downloaded_at,
+            )
+        except Exception as exc:
+            logger.warning("OSM 路网缓存元数据回调失败，不影响导航: {}", exc)
+
+    def _save_graph_atomically(self, graph: nx.MultiDiGraph, graph_path: Path) -> None:
+        temp_path = graph_path.with_name(f"{graph_path.name}.tmp")
+        try:
+            temp_path.unlink(missing_ok=True)
+            ox.save_graphml(graph, filepath=temp_path)
+            os.replace(temp_path, graph_path)
+        finally:
+            temp_path.unlink(missing_ok=True)
+
+    def get_city_graph(
+        self,
+        city_name: str,
+        transport: str = "walk",
+        *,
+        force_refresh: bool = False,
+    ) -> nx.MultiDiGraph:
+        with self._graph_cache_lock:
+            return self._get_city_graph_locked(city_name, transport, force_refresh=force_refresh)
+
+    def _get_city_graph_locked(
+        self,
+        city_name: str,
+        transport: str,
+        *,
+        force_refresh: bool,
+    ) -> nx.MultiDiGraph:
+        city = city_name.strip()
+        network_type = self._to_network_type(transport)
+        candidates = self._place_candidates(city)
+        graph_path = self.get_graph_cache_path(city, transport)
+        key = (city, transport)
+
+        if force_refresh:
+            self.clear_memory_cache(city, transport)
+        elif key in self._memory_cache:
+            graph = self._memory_cache.pop(key)
+            self._memory_cache[key] = graph
+            logger.info("命中 OSM 内存路网缓存: city={} transport={}", city, transport)
+            return graph
+
+        if graph_path.exists() and not force_refresh:
+            try:
+                started_at = perf_counter()
+                graph = ox.load_graphml(filepath=graph_path)
+                if graph.number_of_nodes() == 0:
+                    raise ValueError("GraphML 路网为空")
+                self._remember_graph(city, transport, graph)
+                self._record_metadata(
+                    city=city,
+                    transport=transport,
+                    place_query=candidates[0],
+                    graph_path=graph_path,
+                    graph=graph,
+                    status="ready",
+                )
+                logger.info(
+                    "命中 OSM GraphML 路网缓存: city={} transport={} nodes={} edges={} file_size={}B elapsed_ms={:.2f}",
+                    city,
+                    transport,
+                    graph.number_of_nodes(),
+                    graph.number_of_edges(),
+                    graph_path.stat().st_size,
+                    (perf_counter() - started_at) * 1000,
+                )
+                return graph
+            except Exception as exc:
+                logger.warning(
+                    "OSM GraphML 缓存读取失败，将重新下载: city={} transport={} path={} error={}",
+                    city,
+                    transport,
+                    graph_path,
+                    exc,
+                )
+
+        last_error: Exception | None = None
         for place in candidates:
-            logger.info("开始加载 OSM 路网: city={} place={} network_type={}", city_name, place, network_type)
+            logger.info("开始加载 OSM 路网: city={} place={} network_type={}", city, place, network_type)
             try:
                 graph = ox.graph_from_place(place, network_type=network_type, simplify=True)
             except Exception as exc:
@@ -64,21 +267,59 @@ class OSMService:
                 last_error = ValueError(f"城市路网为空: place={place}")
                 logger.warning("OSM 路网为空，将尝试下一个候选: place={}", place)
                 continue
+
+            downloaded_at = datetime.now()
+            try:
+                self._save_graph_atomically(graph, graph_path)
+                status = "ready"
+                last_error_text = None
+            except Exception as exc:
+                status = "save_failed"
+                last_error_text = str(exc)
+                logger.warning(
+                    "OSM 路网已下载但 GraphML 保存失败，本次仍可导航: city={} transport={} path={} error={}",
+                    city,
+                    transport,
+                    graph_path,
+                    exc,
+                )
+
+            self._remember_graph(city, transport, graph)
+            self._record_metadata(
+                city=city,
+                transport=transport,
+                place_query=place,
+                graph_path=graph_path,
+                graph=graph,
+                status=status,
+                last_error=last_error_text,
+                downloaded_at=downloaded_at,
+            )
             logger.info(
-                "OSM 路网加载成功: city={} place={} transport={} nodes={} edges={}",
-                city_name,
+                "OSM 路网加载成功: city={} place={} transport={} nodes={} edges={} persisted={}",
+                city,
                 place,
                 transport,
                 graph.number_of_nodes(),
                 graph.number_of_edges(),
+                status == "ready",
             )
             return graph
 
         tried_places = ", ".join(candidates)
-        raise ValueError(
-            f"加载城市路网失败: city={city_name}, transport={transport}, "
+        error_text = (
+            f"加载城市路网失败: city={city}, transport={transport}, "
             f"tried_places=[{tried_places}], last_error={last_error}"
-        ) from last_error
+        )
+        self._record_metadata(
+            city=city,
+            transport=transport,
+            place_query=candidates[0],
+            graph_path=graph_path,
+            status="refresh_failed" if graph_path.exists() else "failed",
+            last_error=error_text,
+        )
+        raise ValueError(error_text) from last_error
 
     def _nearest_node(self, graph: nx.MultiDiGraph, lng: float, lat: float, label: str = "point") -> int:
         try:

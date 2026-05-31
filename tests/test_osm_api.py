@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.join(CURRENT_DIR, "..")
@@ -19,7 +19,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH.replace('\\', '/')}"
 
 import api
 from database import engine
-from models import NationalSpot
+from models import NationalSpot, RouteCache
 
 
 def seed_national_spots() -> tuple[int, int, int]:
@@ -73,8 +73,10 @@ def main():
         start_id, end_id, cross_city_id = seed_national_spots()
 
         original_route_planning = api.osm_service.route_planning
+        route_calls = []
 
         def fake_route_planning(**kwargs):
+            route_calls.append(kwargs)
             return {
                 "city": kwargs["city"],
                 "transport": kwargs["transport"],
@@ -110,6 +112,45 @@ def main():
             assert ok_data["segment_count"] == 2
             assert ok_data["segment_distances_m"] == [5200.25, 7600.25]
             assert ok_data["estimated_duration_s"] == 9143.21
+            assert len(route_calls) == 1
+
+            cached_resp = client.post(
+                "/navigate/osm",
+                json={
+                    "start_spot_id": start_id,
+                    "end_spot_id": end_id,
+                    "transport": "walk",
+                },
+            )
+            assert cached_resp.status_code == 200
+            assert cached_resp.json() == ok_data
+            assert len(route_calls) == 1
+
+            reverse_resp = client.post(
+                "/navigate/osm",
+                json={
+                    "start_spot_id": end_id,
+                    "end_spot_id": start_id,
+                    "transport": "walk",
+                },
+            )
+            assert reverse_resp.status_code == 200
+            assert len(route_calls) == 2
+
+            bike_resp = client.post(
+                "/navigate/osm",
+                json={
+                    "start_spot_id": start_id,
+                    "end_spot_id": end_id,
+                    "transport": "bike",
+                },
+            )
+            assert bike_resp.status_code == 200
+            assert len(route_calls) == 3
+
+            with Session(engine) as session:
+                route_caches = session.exec(select(RouteCache)).all()
+                assert len(route_caches) == 3
 
             required_compat_fields = {
                 "city",
@@ -170,6 +211,11 @@ def main():
 
             def failing_route_planning(**kwargs):
                 raise ValueError("测试路网不可达")
+
+            with Session(engine) as session:
+                for route_cache in session.exec(select(RouteCache)).all():
+                    session.delete(route_cache)
+                session.commit()
 
             api.osm_service.route_planning = failing_route_planning
             failed_route_resp = client.post(

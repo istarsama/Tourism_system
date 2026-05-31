@@ -9,6 +9,7 @@ from models import (
     POIAlias,
     POIGeometry,
     RouteCache,
+    OSMGraphCache,
     NationalSpot,
     NationalSpotXHSNote,
     MapConfig,

@@ -25,6 +25,8 @@ SCRIPT_TESTS = [
     "tests/test_national_spots_link.py",
     "tests/test_osm_api.py",
     "tests/test_osm_frontend_contract.py",
+    "tests/test_osm_graph_cache_metadata.py",
+    "tests/test_osm_preload.py",
     "tests/test_poi_sync.py",
     "tests/test_search_scope.py",
     "tests/test_vector_db.py",

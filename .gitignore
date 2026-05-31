@@ -18,6 +18,9 @@ tests/tmp_chroma_test/
 tests/tmp_agent_chroma/
 tests/**/__pycache__/
 data/chroma/
+data/osm_graphs/
+data/osmnx_cache/
+cache/
 
 # 操作系统生成的垃圾文件
 .DS_Store
