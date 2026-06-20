@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 class NavigateRequest(BaseModel):
     start_id: int
     end_id: Optional[int] = None
-    via_ids: List[int] = []
+    via_ids: List[int] = Field(default_factory=list)
     strategy: str = "dist"    # dist=最短距离 / time=最短时间
     transport: str = "walk"   # walk=步行 / bike=自行车
 
@@ -24,6 +24,7 @@ class NavigateResponse(BaseModel):
 class OSMNavigateRequest(BaseModel):
     start_spot_id: int = Field(..., description="起点 NationalSpot.id")
     end_spot_id: int = Field(..., description="终点 NationalSpot.id")
+    via_spot_ids: List[int] = Field(default_factory=list, description="按顺序经过的 NationalSpot.id 列表")
     transport: str = Field("walk", description="出行方式，仅支持 walk 或 bike")
 
 
@@ -32,6 +33,7 @@ class OSMNavigateResponse(BaseModel):
     transport: str = Field(..., description="出行方式，walk 或 bike")
     start_spot_id: int = Field(..., description="起点 NationalSpot.id")
     end_spot_id: int = Field(..., description="终点 NationalSpot.id")
+    via_spot_ids: List[int] = Field(default_factory=list, description="按顺序经过的 NationalSpot.id 列表")
     node_ids: List[int] = Field(..., description="OSM 路网节点 ID 序列")
     path_coords: List[List[float]] = Field(
         ...,

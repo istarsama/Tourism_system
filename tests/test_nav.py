@@ -31,7 +31,11 @@ def main():
             },
         )
         assert multi.status_code == 200, multi.text
-        assert 57 in multi.json()["path_ids"]
+        multi_path = multi.json()["path_ids"]
+        assert multi_path[0] == 1
+        assert multi_path[-1] == 1
+        assert 57 in multi_path
+        assert 7 in multi_path
 
     print("✅ 校园单点与多点导航测试通过")
 

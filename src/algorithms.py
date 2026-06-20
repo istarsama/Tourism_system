@@ -1,6 +1,5 @@
 import heapq
-import math
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 ##############################################
 # 辅助函数和常量定义
 SPEED_WALK = 1.5   # 步行速度: 1.5 m/s (约 5.4 km/h)
@@ -134,19 +133,17 @@ def plan_multi_point_route(
 ) -> Tuple[List[int], float]:
     """
     【核心算法：多点路径规划】
-    PPT 要求：规划从当前位置出发，参观多个景点 (最后不一定返回，按PPT语境通常是游览完即可)。
+    从当前位置出发参观多个景点，并在全部参观后返回起点。
     算法策略：贪心算法 (Nearest Neighbor) - 每次找离当前最近的下一个点。
     """
     full_path = []
     total_cost = 0.0
     
     current_node = start_id
-    # 待访问的点集合 (去重)
-    to_visit = set(via_spots)
-    
-    # 如果起点也在待访问列表中，先移除，避免原地打转
-    if current_node in to_visit:
-        to_visit.remove(current_node)
+    # 按输入顺序去重，保证距离相同时结果稳定；起点不作为待访问目标。
+    to_visit = list(dict.fromkeys(
+        spot_id for spot_id in via_spots if spot_id != start_id
+    ))
         
     # 记录路径起点
     full_path.append(current_node)
@@ -168,9 +165,9 @@ def plan_multi_point_route(
                 best_next_node = target
                 best_segment_path = path
         
-        # 如果找不到下一个可达的点 (比如孤岛)，强行结束
+        # 任一目标不可达时不能返回一条“部分完成”的路线。
         if best_next_node is None:
-            break
+            return [], -1
             
         # 2. 更新状态
         total_cost += min_segment_cost
@@ -180,5 +177,15 @@ def plan_multi_point_route(
         # 3. 移动到下个点
         current_node = best_next_node
         to_visit.remove(current_node)
-        
+
+    # 验收要求：参观完所有目标后返回当前位置（起点）。
+    if current_node != start_id:
+        return_path, return_cost = dijkstra_search(
+            graph, current_node, start_id, strategy, transport
+        )
+        if return_cost == -1:
+            return [], -1
+        total_cost += return_cost
+        full_path.extend(return_path[1:])
+
     return full_path, total_cost

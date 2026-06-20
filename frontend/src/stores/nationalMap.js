@@ -60,9 +60,10 @@ function normalizeRouteResult(result, fallbackTransport = DEFAULT_TRANSPORT) {
   }
 }
 
-function isSameCity(start, end) {
-  if (!start || !end) return true
-  return start.city === end.city
+function areSameCity(spots) {
+  const selectedSpots = spots.filter(Boolean)
+  if (selectedSpots.length <= 1) return true
+  return selectedSpots.every((spot) => spot.city === selectedSpots[0].city)
 }
 
 export const useNationalMapStore = defineStore('nationalMap', () => {
@@ -77,6 +78,7 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
   const selectedSpot = ref(null)
   const startSpot = ref(null)
   const endSpot = ref(null)
+  const waypointSpots = ref([])
 
   const routeCoords = ref([])
   const nodeIds = ref([])
@@ -92,15 +94,23 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
 
   const isInitializing = ref(false)
 
-  const sameCitySelected = computed(() => isSameCity(startSpot.value, endSpot.value))
+  const routeSpots = computed(() => [
+    startSpot.value,
+    ...waypointSpots.value,
+    endSpot.value,
+  ])
+  const sameCitySelected = computed(() => areSameCity(routeSpots.value))
   const canNavigate = computed(() => {
     if (!startSpot.value || !endSpot.value) return false
-    if (startSpot.value.id === endSpot.value.id) return false
-    return true
+    if (waypointSpots.value.some((spot) => !spot)) return false
+    const ids = routeSpots.value.filter(Boolean).map((spot) => spot.id)
+    return ids.length === new Set(ids).size
   })
   const canNavigateHint = computed(() => {
     if (!startSpot.value || !endSpot.value) return '请选择起点和终点'
-    if (startSpot.value.id === endSpot.value.id) return '起点和终点不能相同'
+    if (waypointSpots.value.some((spot) => !spot)) return '请选择全部途经点或删除空途经点'
+    const ids = routeSpots.value.filter(Boolean).map((spot) => spot.id)
+    if (ids.length !== new Set(ids).size) return '起点、途经点和终点不能重复'
     return ''
   })
   const hasRoute = computed(() => routeCoords.value.length > 1)
@@ -186,6 +196,11 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
     if (startSpot.value && endSpot.value && endSpot.value.id === startSpot.value.id) {
       endSpot.value = null
     }
+    if (startSpot.value) {
+      waypointSpots.value = waypointSpots.value.filter(
+        (waypoint) => !waypoint || waypoint.id !== startSpot.value.id
+      )
+    }
     resetRoute()
   }
 
@@ -194,6 +209,47 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
     if (endSpot.value && startSpot.value && startSpot.value.id === endSpot.value.id) {
       startSpot.value = null
     }
+    if (endSpot.value) {
+      waypointSpots.value = waypointSpots.value.filter(
+        (waypoint) => !waypoint || waypoint.id !== endSpot.value.id
+      )
+    }
+    resetRoute()
+  }
+
+  function addWaypointSpot(spot = null) {
+    if (
+      spot &&
+      routeSpots.value.filter(Boolean).some((selected) => selected.id === spot.id)
+    ) {
+      return false
+    }
+    waypointSpots.value.push(spot || null)
+    resetRoute()
+    return true
+  }
+
+  function setWaypointSpot(index, spot) {
+    if (index < 0 || index >= waypointSpots.value.length) return false
+    if (
+      spot &&
+      routeSpots.value
+        .filter(Boolean)
+        .some((selected, selectedIndex) => {
+          const routeIndex = selectedIndex - 1
+          return selected.id === spot.id && routeIndex !== index
+        })
+    ) {
+      return false
+    }
+    waypointSpots.value[index] = spot || null
+    resetRoute()
+    return true
+  }
+
+  function removeWaypointSpot(index) {
+    if (index < 0 || index >= waypointSpots.value.length) return
+    waypointSpots.value.splice(index, 1)
     resetRoute()
   }
 
@@ -209,6 +265,7 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
     selectedSpot.value = null
     startSpot.value = null
     endSpot.value = null
+    waypointSpots.value = []
     resetRoute()
   }
 
@@ -234,6 +291,7 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
       const result = await api.navigateOsm({
         start_spot_id: startSpot.value.id,
         end_spot_id: endSpot.value.id,
+        via_spot_ids: waypointSpots.value.map((spot) => spot.id),
         transport,
       })
 
@@ -273,6 +331,7 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
     selectedSpot,
     startSpot,
     endSpot,
+    waypointSpots,
     routeCoords,
     nodeIds,
     totalDistanceM,
@@ -298,6 +357,9 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
     setSelectedSpot,
     setStartSpot,
     setEndSpot,
+    addWaypointSpot,
+    setWaypointSpot,
+    removeWaypointSpot,
     setStartSpotById,
     setEndSpotById,
     resetRoute,

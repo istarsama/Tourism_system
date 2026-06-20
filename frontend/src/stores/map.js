@@ -15,6 +15,7 @@ export const useMapStore = defineStore('map', () => {
   // 导航状态
   const startNode = ref(null)
   const endNode = ref(null)
+  const waypointNodes = ref([])
   const currentPath = ref([])
   const pathCoords = ref([])
   const totalCost = ref(0)
@@ -77,6 +78,9 @@ export const useMapStore = defineStore('map', () => {
       const result = await api.navigate({
         start_id: startNode.value.id,
         end_id: endNode.value.id,
+        via_ids: waypointNodes.value
+          .filter(Boolean)
+          .map(node => node.id),
         strategy,
         transport,
       })
@@ -97,6 +101,7 @@ export const useMapStore = defineStore('map', () => {
   function resetNavigation() {
     startNode.value = null
     endNode.value = null
+    waypointNodes.value = []
     currentPath.value = []
     pathCoords.value = []
     totalCost.value = 0
@@ -134,6 +139,28 @@ export const useMapStore = defineStore('map', () => {
     }
   }
 
+  function addWaypoint() {
+    waypointNodes.value.push(null)
+  }
+
+  function setWaypoint(index, node) {
+    if (index < 0 || index >= waypointNodes.value.length) return
+    waypointNodes.value[index] = node || null
+    clearPath()
+  }
+
+  function removeWaypoint(index) {
+    if (index < 0 || index >= waypointNodes.value.length) return
+    waypointNodes.value.splice(index, 1)
+    clearPath()
+  }
+
+  function clearPath() {
+    currentPath.value = []
+    pathCoords.value = []
+    totalCost.value = 0
+  }
+
   // 更新视图变换
   function updateTransform(newTransform) {
     transform.value = { ...transform.value, ...newTransform }
@@ -156,6 +183,7 @@ export const useMapStore = defineStore('map', () => {
     error,
     startNode,
     endNode,
+    waypointNodes,
     currentPath,
     pathCoords,
     totalCost,
@@ -176,6 +204,9 @@ export const useMapStore = defineStore('map', () => {
     clearSelectedSpot,
     setStart,
     setEnd,
+    addWaypoint,
+    setWaypoint,
+    removeWaypoint,
     updateTransform,
     setActiveScope,
   }

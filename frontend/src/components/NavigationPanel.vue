@@ -35,8 +35,53 @@
         />
       </div>
 
+      <!-- 途经点选择（可添加多个） -->
+      <div class="space-y-2 mt-4">
+        <div class="flex items-center justify-between">
+          <label class="flex items-center gap-2 text-sm font-semibold text-gray-700">
+            <div class="w-3 h-3 rounded-full bg-amber-500 ring-2 ring-amber-200"></div>
+            途经点
+          </label>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-bupt-blue bg-white/80 ring-1 ring-black/5 hover:bg-white transition-all"
+            @click="addWaypointField"
+          >
+            <Plus :size="14" />
+            添加途经点
+          </button>
+        </div>
+
+        <p v-if="mapStore.waypointNodes.length === 0" class="text-xs text-gray-500">
+          添加后将规划经过所有目标并返回起点的环线。
+        </p>
+
+        <div
+          v-for="(waypoint, index) in mapStore.waypointNodes"
+          :key="`waypoint-${index}`"
+          class="flex items-center gap-2"
+        >
+          <div class="flex-1 min-w-0">
+            <SearchInput
+              v-model="waypointSearches[index]"
+              :placeholder="`搜索途经点 ${index + 1}...`"
+              :selected="waypoint"
+              @select="spot => handleSelectWaypoint(index, spot)"
+            />
+          </div>
+          <button
+            type="button"
+            class="p-2.5 rounded-lg text-red-500 bg-white/70 ring-1 ring-red-100 hover:bg-red-50 transition-colors"
+            :title="`删除途经点 ${index + 1}`"
+            @click="removeWaypointField(index)"
+          >
+            <Trash2 :size="16" />
+          </button>
+        </div>
+      </div>
+
       <!-- 终点选择 -->
-      <div class="space-y-2">
+      <div class="space-y-2 mt-4">
         <label class="flex items-center gap-2 text-sm font-semibold text-gray-700">
           <div class="w-3 h-3 rounded-full bg-red-500 ring-2 ring-red-200"></div>
           终点
@@ -147,7 +192,7 @@
             <TransitionGroup name="path-item" tag="ol" class="space-y-2">
               <li 
                 v-for="(id, index) in mapStore.currentPath" 
-                :key="id"
+                :key="`${id}-${index}`"
                 class="flex items-start gap-2 text-sm"
               >
                 <span class="flex-shrink-0 w-5 h-5 rounded-full bg-bupt-blue/10 text-bupt-blue flex items-center justify-center text-xs font-semibold">
@@ -168,7 +213,7 @@
 import { ref } from 'vue'
 import { 
   Navigation, Route, Car, MapIcon, ArrowDownUp, 
-  RotateCcw, Loader2, ListOrdered 
+  RotateCcw, Loader2, ListOrdered, Plus, Trash2
 } from 'lucide-vue-next'
 import { useMapStore } from '../stores/map'
 import SearchInput from './SearchInput.vue'
@@ -177,6 +222,7 @@ const mapStore = useMapStore()
 
 const startSearch = ref('')
 const endSearch = ref('')
+const waypointSearches = ref([])
 const strategy = ref('dist')
 const transport = ref('walk')
 const isNavigating = ref(false)
@@ -199,6 +245,40 @@ function handleSelectEnd(spot) {
   }
   mapStore.setEnd(spot)
   endSearch.value = spot.name
+}
+
+function addWaypointField() {
+  mapStore.addWaypoint()
+  waypointSearches.value.push('')
+}
+
+function handleSelectWaypoint(index, spot) {
+  if (!spot) {
+    mapStore.setWaypoint(index, null)
+    waypointSearches.value[index] = ''
+    return
+  }
+
+  const selectedIds = [
+    mapStore.startNode?.id,
+    mapStore.endNode?.id,
+    ...mapStore.waypointNodes
+      .filter((_, waypointIndex) => waypointIndex !== index)
+      .filter(Boolean)
+      .map(node => node.id),
+  ]
+  if (selectedIds.includes(spot.id)) {
+    alert('该地点已被选为起点、终点或其他途经点')
+    return
+  }
+
+  mapStore.setWaypoint(index, spot)
+  waypointSearches.value[index] = spot.name
+}
+
+function removeWaypointField(index) {
+  mapStore.removeWaypoint(index)
+  waypointSearches.value.splice(index, 1)
 }
 
 function handleSwapPoints() {
@@ -229,6 +309,7 @@ function handleReset() {
   mapStore.resetNavigation()
   startSearch.value = ''
   endSearch.value = ''
+  waypointSearches.value = []
 }
 </script>
 
