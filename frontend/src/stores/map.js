@@ -70,13 +70,14 @@ export const useMapStore = defineStore('map', () => {
   }
 
   // 执行导航
-  async function navigate(strategy = 'dist', transport = 'walk') {
+  async function navigate(strategy = 'dist', transport = 'walk', viaIds = []) {
     if (!canNavigate.value) return
 
     try {
       const result = await api.navigate({
         start_id: startNode.value.id,
         end_id: endNode.value.id,
+        via_ids: Array.isArray(viaIds) ? viaIds : [],
         strategy,
         transport,
       })
@@ -140,7 +141,7 @@ export const useMapStore = defineStore('map', () => {
   }
 
   function setActiveScope(scope) {
-    if (scope !== 'campus' && scope !== 'national') {
+    if (scope !== 'campus' && scope !== 'indoor' && scope !== 'national') {
       return
     }
     activeScope.value = scope
@@ -180,3 +181,4 @@ export const useMapStore = defineStore('map', () => {
     setActiveScope,
   }
 })
+

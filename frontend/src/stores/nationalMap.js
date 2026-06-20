@@ -65,6 +65,42 @@ function isSameCity(start, end) {
   return start.city === end.city
 }
 
+function haversineMeters(a, b) {
+  const r = 6371000
+  const lat1 = Number(a.latitude) * Math.PI / 180
+  const lat2 = Number(b.latitude) * Math.PI / 180
+  const dLat = (Number(b.latitude) - Number(a.latitude)) * Math.PI / 180
+  const dLng = (Number(b.longitude) - Number(a.longitude)) * Math.PI / 180
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
+  return 2 * r * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
+}
+
+function buildDemoSegment(start, end, transport) {
+  const distance = haversineMeters(start, end)
+  const speed = transport === 'bike' ? 4.2 : 1.25
+  const steps = 16
+  const coords = []
+  for (let i = 0; i <= steps; i += 1) {
+    const t = i / steps
+    coords.push([
+      Number(start.latitude) + (Number(end.latitude) - Number(start.latitude)) * t,
+      Number(start.longitude) + (Number(end.longitude) - Number(start.longitude)) * t,
+    ])
+  }
+  return {
+    city: start.city,
+    transport,
+    nodeIds: [],
+    pathCoords: coords,
+    totalDistanceM: distance,
+    segmentCount: 1,
+    segmentDistancesM: [distance],
+    estimatedDurationS: distance / speed,
+    raw: null,
+    fallback: true,
+  }
+}
+
 export const useNationalMapStore = defineStore('nationalMap', () => {
   const modeConfig = ref(null)
   const modeLoading = ref(false)
@@ -77,6 +113,7 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
   const selectedSpot = ref(null)
   const startSpot = ref(null)
   const endSpot = ref(null)
+  const viaSpots = ref([])
 
   const routeCoords = ref([])
   const nodeIds = ref([])
@@ -88,11 +125,15 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
   const routeTransport = ref(DEFAULT_TRANSPORT)
   const routeLoading = ref(false)
   const routeError = ref(null)
+  const routeSegments = ref([])
+  const routeWaypoints = ref([])
+  const isDemoRouteFallback = ref(false)
   const activeRouteRequestId = ref(0)
 
   const isInitializing = ref(false)
 
-  const sameCitySelected = computed(() => isSameCity(startSpot.value, endSpot.value))
+  const waypointSpots = computed(() => [startSpot.value, ...viaSpots.value, endSpot.value].filter(Boolean))
+  const sameCitySelected = computed(() => waypointSpots.value.every((spot) => isSameCity(waypointSpots.value[0], spot)))
   const canNavigate = computed(() => {
     if (!startSpot.value || !endSpot.value) return false
     if (startSpot.value.id === endSpot.value.id) return false
@@ -101,6 +142,7 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
   const canNavigateHint = computed(() => {
     if (!startSpot.value || !endSpot.value) return '请选择起点和终点'
     if (startSpot.value.id === endSpot.value.id) return '起点和终点不能相同'
+    if (!sameCitySelected.value) return '起点、途径点和终点需在同一城市'
     return ''
   })
   const hasRoute = computed(() => routeCoords.value.length > 1)
@@ -179,20 +221,29 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
     routeTransport.value = DEFAULT_TRANSPORT
     routeError.value = null
     routeLoading.value = false
+    routeSegments.value = []
+    routeWaypoints.value = []
+    isDemoRouteFallback.value = false
+  }
+
+  function removeViaId(spotId) {
+    viaSpots.value = viaSpots.value.filter((spot) => spot.id !== spotId)
   }
 
   function setStartSpot(spot) {
     startSpot.value = spot || null
-    if (startSpot.value && endSpot.value && endSpot.value.id === startSpot.value.id) {
-      endSpot.value = null
+    if (startSpot.value) {
+      if (endSpot.value?.id === startSpot.value.id) endSpot.value = null
+      removeViaId(startSpot.value.id)
     }
     resetRoute()
   }
 
   function setEndSpot(spot) {
     endSpot.value = spot || null
-    if (endSpot.value && startSpot.value && startSpot.value.id === endSpot.value.id) {
-      startSpot.value = null
+    if (endSpot.value) {
+      if (startSpot.value?.id === endSpot.value.id) startSpot.value = null
+      removeViaId(endSpot.value.id)
     }
     resetRoute()
   }
@@ -205,62 +256,131 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
     setEndSpot(getSpotById(spotId))
   }
 
+  function addViaSpot(spot) {
+    if (!spot) return
+    if (startSpot.value?.id === spot.id || endSpot.value?.id === spot.id) return
+    if (viaSpots.value.some((item) => item.id === spot.id)) return
+    viaSpots.value.push(spot)
+    resetRoute()
+  }
+
+  function addViaSpotById(spotId) {
+    addViaSpot(getSpotById(spotId))
+  }
+
+  function removeViaSpot(spotId) {
+    removeViaId(Number(spotId))
+    resetRoute()
+  }
+
+  function moveViaSpot(index, direction) {
+    const nextIndex = index + direction
+    if (nextIndex < 0 || nextIndex >= viaSpots.value.length) return
+    const copy = [...viaSpots.value]
+    const [item] = copy.splice(index, 1)
+    copy.splice(nextIndex, 0, item)
+    viaSpots.value = copy
+    resetRoute()
+  }
+
   function resetSelections() {
     selectedSpot.value = null
     startSpot.value = null
     endSpot.value = null
+    viaSpots.value = []
     resetRoute()
   }
 
-  async function navigateOsm(transport = DEFAULT_TRANSPORT) {
+  async function planSegment(start, end, transport) {
+    try {
+      const result = await api.navigateOsm({
+        start_spot_id: start.id,
+        end_spot_id: end.id,
+        transport,
+      })
+      return { ...normalizeRouteResult(result, transport), fallback: false }
+    } catch (error) {
+      console.warn('OSM segment failed, using demo fallback:', error)
+      return buildDemoSegment(start, end, transport)
+    }
+  }
+
+  async function navigateMultiStop(transport = DEFAULT_TRANSPORT) {
     if (!canNavigate.value) {
       routeError.value = canNavigateHint.value
       return null
     }
     if (!sameCitySelected.value) {
-      routeError.value = '当前仅支持同城导航，请选择同一城市的景点'
+      routeError.value = '起点、途径点和终点需在同一城市，当前仅支持同城串联规划'
       return null
     }
-    if (routeLoading.value) {
-      return null
-    }
+    if (routeLoading.value) return null
 
     const requestId = activeRouteRequestId.value + 1
     activeRouteRequestId.value = requestId
-
     routeLoading.value = true
     routeError.value = null
-    try {
-      const result = await api.navigateOsm({
-        start_spot_id: startSpot.value.id,
-        end_spot_id: endSpot.value.id,
-        transport,
-      })
 
-      if (requestId !== activeRouteRequestId.value) {
-        return null
+    try {
+      const waypoints = [startSpot.value, ...viaSpots.value, endSpot.value]
+      const mergedCoords = []
+      const mergedNodeIds = []
+      const mergedDistances = []
+      const segments = []
+      let totalDistance = 0
+      let totalDuration = 0
+      let totalSegments = 0
+      let usedFallback = false
+
+      for (let i = 1; i < waypoints.length; i += 1) {
+        const from = waypoints[i - 1]
+        const to = waypoints[i]
+        const segment = await planSegment(from, to, transport)
+        if (requestId !== activeRouteRequestId.value) return null
+
+        const coords = segment.pathCoords
+        if (coords.length) {
+          mergedCoords.push(...(mergedCoords.length ? coords.slice(1) : coords))
+        }
+        mergedNodeIds.push(...segment.nodeIds)
+        mergedDistances.push(...segment.segmentDistancesM)
+        totalDistance += segment.totalDistanceM
+        totalDuration += segment.estimatedDurationS
+        totalSegments += Math.max(1, segment.segmentCount)
+        usedFallback = usedFallback || segment.fallback
+        segments.push({
+          from,
+          to,
+          distanceM: segment.totalDistanceM,
+          durationS: segment.estimatedDurationS,
+          fallback: segment.fallback,
+        })
       }
 
-      const normalized = normalizeRouteResult(result, transport)
-      routeCoords.value = normalized.pathCoords
-      nodeIds.value = normalized.nodeIds
-      totalDistanceM.value = normalized.totalDistanceM
-      segmentCount.value = normalized.segmentCount
-      segmentDistancesM.value = normalized.segmentDistancesM
-      estimatedDurationS.value = normalized.estimatedDurationS
-      routeCity.value = normalized.city || startSpot.value?.city || ''
-      routeTransport.value = normalized.transport
-      return normalized.raw
+      routeCoords.value = mergedCoords
+      nodeIds.value = mergedNodeIds
+      totalDistanceM.value = totalDistance
+      segmentCount.value = totalSegments
+      segmentDistancesM.value = mergedDistances
+      estimatedDurationS.value = totalDuration
+      routeCity.value = startSpot.value?.city || ''
+      routeTransport.value = transport === 'bike' ? 'bike' : 'walk'
+      routeSegments.value = segments
+      routeWaypoints.value = waypoints
+      isDemoRouteFallback.value = usedFallback
+      return { segments, path_coords: mergedCoords, fallback: usedFallback }
     } catch (err) {
       if (requestId === activeRouteRequestId.value) {
-        routeError.value = err.message
+        routeError.value = err.message || '路线规划失败'
       }
       throw err
     } finally {
-      if (requestId === activeRouteRequestId.value) {
-        routeLoading.value = false
-      }
+      if (requestId === activeRouteRequestId.value) routeLoading.value = false
     }
+  }
+
+  async function navigateOsm(transport = DEFAULT_TRANSPORT) {
+    return navigateMultiStop(transport)
   }
 
   return {
@@ -273,6 +393,7 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
     selectedSpot,
     startSpot,
     endSpot,
+    viaSpots,
     routeCoords,
     nodeIds,
     totalDistanceM,
@@ -283,6 +404,9 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
     routeTransport,
     routeLoading,
     routeError,
+    routeSegments,
+    routeWaypoints,
+    isDemoRouteFallback,
     isInitializing,
     canNavigate,
     canNavigateHint,
@@ -295,11 +419,17 @@ export const useNationalMapStore = defineStore('nationalMap', () => {
     loadNationalSpots,
     navigate: navigateOsm,
     navigateOsm,
+    navigateMultiStop,
     setSelectedSpot,
     setStartSpot,
     setEndSpot,
     setStartSpotById,
     setEndSpotById,
+    addViaSpot,
+    addViaSpotById,
+    removeViaSpot,
+    moveViaSpot,
+    getSpotById,
     resetRoute,
     resetSelections,
   }
