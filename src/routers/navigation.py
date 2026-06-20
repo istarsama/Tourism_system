@@ -22,7 +22,7 @@ from services.map_service import get_graph, get_osm_service
 from loguru import logger
 
 router = APIRouter(tags=["导航"])
-OSM_ROUTE_CACHE_PREFIX = "osm:v2"
+OSM_ROUTE_CACHE_PREFIX = "osm:v3"
 
 
 def _build_osm_route_cache_key(
@@ -59,6 +59,7 @@ def _get_cached_osm_route(session: Session, cache_key: str) -> dict | None:
             "segment_count",
             "segment_distances_m",
             "estimated_duration_s",
+            "legs",
         }
         if not required_fields.issubset(route):
             raise ValueError("缓存缺少必要字段")
@@ -302,6 +303,20 @@ def navigate_osm(request: OSMNavigateRequest, session: Session = Depends(get_ses
         "segment_count": segment_count,
         "segment_distances_m": segment_distances_m,
         "estimated_duration_s": estimated_duration_s,
+        "legs": [
+            {
+                "start_spot_id": leg_start.id,
+                "end_spot_id": leg_end.id,
+                "total_distance_m": float(result.get("total_distance_m", 0.0)),
+                "segment_count": int(
+                    result.get("segment_count", len(result.get("segment_distances_m", [])))
+                ),
+                "estimated_duration_s": float(result.get("estimated_duration_s", 0.0)),
+            }
+            for (leg_start, leg_end), result in zip(
+                zip(route_spots, route_spots[1:]), leg_results
+            )
+        ],
     }
     _save_osm_route_cache(session, route_cache_key, response)
 

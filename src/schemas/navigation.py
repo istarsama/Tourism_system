@@ -28,6 +28,14 @@ class OSMNavigateRequest(BaseModel):
     transport: str = Field("walk", description="出行方式，仅支持 walk 或 bike")
 
 
+class OSMRouteLegResponse(BaseModel):
+    start_spot_id: int = Field(..., description="本段起点 NationalSpot.id")
+    end_spot_id: int = Field(..., description="本段终点 NationalSpot.id")
+    total_distance_m: float = Field(..., description="本段距离，单位米")
+    segment_count: int = Field(..., description="本段包含的 OSM 路段数量")
+    estimated_duration_s: float = Field(..., description="本段预计耗时，单位秒")
+
+
 class OSMNavigateResponse(BaseModel):
     city: str = Field(..., description="导航所在城市")
     transport: str = Field(..., description="出行方式，walk 或 bike")
@@ -43,6 +51,10 @@ class OSMNavigateResponse(BaseModel):
     segment_count: int = Field(..., description="路段数量")
     segment_distances_m: List[float] = Field(..., description="相邻 OSM 节点之间的路段距离，单位米")
     estimated_duration_s: float = Field(..., description="按出行方式估算的耗时，单位秒")
+    legs: List[OSMRouteLegResponse] = Field(
+        default_factory=list,
+        description="按起点、途经点、终点顺序排列的分段汇总",
+    )
 
 
 class XHSPlanRequest(BaseModel):

@@ -88,7 +88,8 @@ import { useMapStore } from '../stores/map'
 const props = defineProps({
   modelValue: String,
   placeholder: String,
-  selected: Object
+  selected: Object,
+  searchFn: Function
 })
 
 const emit = defineEmits(['update:modelValue', 'select'])
@@ -132,12 +133,15 @@ function handleInput(e) {
   // 防抖搜索（300ms）
   searchTimeout = setTimeout(async () => {
     try {
-      const results = await mapStore.searchSpots(value)
+      const search = props.searchFn || mapStore.searchSpots
+      const results = await search(value)
       showSkeleton.value = false
-      suggestions.value = results
-      showSuggestions.value = results.length > 0
+      suggestions.value = Array.isArray(results) ? results : []
+      showSuggestions.value = suggestions.value.length > 0
     } catch (error) {
       console.error('搜索失败:', error)
+      suggestions.value = []
+      showSuggestions.value = false
     } finally {
       isLoading.value = false
     }
@@ -234,3 +238,4 @@ function handleClear() {
   transform: scale(0.95);
 }
 </style>
+

@@ -6,7 +6,7 @@ const DEFAULT_TIMEOUT_MS = 30000
 const parsedOsmTimeoutMs = Number(import.meta.env.VITE_OSM_NAV_TIMEOUT_MS)
 const OSM_NAV_TIMEOUT_MS = Number.isFinite(parsedOsmTimeoutMs) && parsedOsmTimeoutMs > 0
   ? parsedOsmTimeoutMs
-  : 120000
+  : 60000
 
 const apiClient = axios.create({
   baseURL: API_BASE,
@@ -34,6 +34,9 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    if (error?.code === 'ERR_CANCELED') {
+      return Promise.reject(error)
+    }
     const isTimeout = error?.code === 'ECONNABORTED'
     const message = isTimeout
       ? '请求超时：OSM 首次加载城市路网可能较慢，请稍后重试'
@@ -52,7 +55,8 @@ export const api = {
   searchSpots: (query, limit = 5, scope = 'campus') =>
     apiClient.get('/spots/search', { params: { query, limit, scope } }),
   navigate: (data) => apiClient.post('/navigate', data),
-  navigateOsm: (data) => apiClient.post('/navigate/osm', data, { timeout: OSM_NAV_TIMEOUT_MS }),
+  navigateOsm: (data, config = {}) =>
+    apiClient.post('/navigate/osm', data, { timeout: OSM_NAV_TIMEOUT_MS, ...config }),
 
   // 认证相关
   register: (username, password) => apiClient.post('/auth/register', { username, password }),

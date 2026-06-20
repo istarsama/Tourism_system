@@ -79,29 +79,22 @@
           <div class="h-full overflow-y-auto custom-scrollbar">
             <Transition name="tab-fade" mode="out-in">
               <div v-if="activeTab === 'nav'" key="nav">
-                <div class="mb-3 bg-white/70 backdrop-blur-sm rounded-xl p-1 flex gap-1 ring-1 ring-black/5">
+                <div class="mb-3 bg-white/70 backdrop-blur-sm rounded-xl p-1 grid grid-cols-3 gap-1 ring-1 ring-black/5">
                   <button
-                    class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-200"
-                    :class="mapStore.activeScope === 'campus'
+                    v-for="scope in mapScopes"
+                    :key="scope.value"
+                    class="py-2 px-2 rounded-lg text-xs font-semibold transition-all duration-200"
+                    :class="mapStore.activeScope === scope.value
                       ? 'bg-bupt-blue text-white shadow'
                       : 'text-gray-600 hover:text-gray-900'"
-                    @click="switchMapScope('campus')"
+                    @click="switchMapScope(scope.value)"
                   >
-                    校园地图
-                  </button>
-                  <button
-                    class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-200"
-                    :class="mapStore.activeScope === 'national'
-                      ? 'bg-bupt-blue text-white shadow'
-                      : 'text-gray-600 hover:text-gray-900'"
-                    @click="switchMapScope('national')"
-                  >
-                    校外 OSM
+                    {{ scope.label }}
                   </button>
                 </div>
-                <NavigationPanel
-                  v-if="mapStore.activeScope === 'campus'"
-                />
+                <GlobalSpotSearch />
+                <NavigationPanel v-if="mapStore.activeScope === 'campus'" />
+                <IndoorNavigationPanel v-else-if="mapStore.activeScope === 'indoor'" />
                 <NationalNavigationPanel v-else @view-diaries="handleOpenDiary" />
               </div>
               <div v-else key="diary">
@@ -131,7 +124,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { Menu, Navigation, BookOpen } from 'lucide-vue-next'
 import UserPanel from './UserPanel.vue'
 import NavigationPanel from './NavigationPanel.vue'
+import IndoorNavigationPanel from './IndoorNavigationPanel.vue'
 import NationalNavigationPanel from './NationalNavigationPanel.vue'
+import GlobalSpotSearch from './GlobalSpotSearch.vue'
 import DiaryPanel from './DiaryPanel.vue'
 import { useMapStore } from '../stores/map'
 
@@ -140,11 +135,16 @@ const route = useRoute()
 const router = useRouter()
 const mapStore = useMapStore()
 const activeTab = computed(() => (route.name === 'Diary' ? 'diary' : 'nav'))
+const mapScopes = [
+  { value: 'campus', label: '校园' },
+  { value: 'indoor', label: '室内' },
+  { value: 'national', label: '校外' },
+]
 
 watch(
   () => route.query.scope,
   (scope) => {
-    if (scope === 'campus' || scope === 'national') {
+    if (scope === 'campus' || scope === 'indoor' || scope === 'national') {
       if (scope !== mapStore.activeScope) {
         mapStore.setActiveScope(scope)
       }
@@ -293,3 +293,6 @@ function switchTab(tab) {
   transform: translateY(-10px);
 }
 </style>
+
+
+

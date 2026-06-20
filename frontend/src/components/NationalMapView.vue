@@ -134,6 +134,9 @@ function getMarkerStyle(spot) {
   if (store.endSpot?.id === spot.id) {
     return { color: '#dc2626', fillColor: '#ef4444' }
   }
+  if (store.viaSpots?.some((item) => item.id === spot.id)) {
+    return { color: '#d97706', fillColor: '#f59e0b' }
+  }
   if (store.selectedSpot?.id === spot.id) {
     return { color: '#d97706', fillColor: '#f59e0b' }
   }
@@ -327,3 +330,4 @@ function queueMapResize() {
   cursor: pointer;
 }
 </style>
+

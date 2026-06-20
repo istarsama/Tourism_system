@@ -10,6 +10,7 @@
     <!-- 右侧地图区域：地图画布 + AI聊天面板 -->
     <div class="map-area">
       <MapCanvas v-if="mapStore.activeScope === 'campus'" />
+      <IndoorMapView v-else-if="mapStore.activeScope === 'indoor'" />
       <NationalMapView v-else />
       <!-- AI聊天面板：智能导游助手 -->
       <ChatPanel />
@@ -20,6 +21,7 @@
 <script setup>
 import Sidebar from './components/Sidebar.vue'
 import MapCanvas from './components/MapCanvas.vue'
+import IndoorMapView from './components/IndoorMapView.vue'
 import NationalMapView from './components/NationalMapView.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import { useMapStore } from './stores/map'
@@ -48,3 +50,5 @@ const mapStore = useMapStore()
   overflow: hidden; /* 子元素超出时隐藏 */
 }
 </style>
+
+

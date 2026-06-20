@@ -22,7 +22,7 @@ from database import engine
 from models import NationalSpot, RouteCache
 
 
-def seed_national_spots() -> tuple[int, int, int]:
+def seed_national_spots() -> tuple[int, int, int, int]:
     now = datetime.now()
     with Session(engine) as session:
         start = NationalSpot(
@@ -47,6 +47,17 @@ def seed_national_spots() -> tuple[int, int, int]:
             created_at=now,
             updated_at=now,
         )
+        via = NationalSpot(
+            name="测试OSM途经点",
+            type="城市公园",
+            latitude=39.950000,
+            longitude=116.340000,
+            description="测试途经点",
+            city="北京",
+            rating=4.7,
+            created_at=now,
+            updated_at=now,
+        )
         cross_city = NationalSpot(
             name="测试跨城终点",
             type="人文景观",
@@ -59,18 +70,20 @@ def seed_national_spots() -> tuple[int, int, int]:
             updated_at=now,
         )
         session.add(start)
+        session.add(via)
         session.add(end)
         session.add(cross_city)
         session.commit()
         session.refresh(start)
+        session.refresh(via)
         session.refresh(end)
         session.refresh(cross_city)
-        return start.id, end.id, cross_city.id
+        return start.id, via.id, end.id, cross_city.id
 
 
 def main():
     with TestClient(api.app) as client:
-        start_id, end_id, cross_city_id = seed_national_spots()
+        start_id, via_id, end_id, cross_city_id = seed_national_spots()
 
         original_route_planning = api.osm_service.route_planning
         route_calls = []
@@ -126,6 +139,39 @@ def main():
             assert cached_resp.json() == ok_data
             assert len(route_calls) == 1
 
+            multi_resp = client.post(
+                "/navigate/osm",
+                json={
+                    "start_spot_id": start_id,
+                    "via_spot_ids": [via_id],
+                    "end_spot_id": end_id,
+                    "transport": "walk",
+                },
+            )
+            assert multi_resp.status_code == 200
+            multi_data = multi_resp.json()
+            assert multi_data["via_spot_ids"] == [via_id]
+            assert multi_data["total_distance_m"] == 25601.0
+            assert len(multi_data["legs"]) == 2
+            assert multi_data["legs"][0]["start_spot_id"] == start_id
+            assert multi_data["legs"][0]["end_spot_id"] == via_id
+            assert multi_data["legs"][1]["start_spot_id"] == via_id
+            assert multi_data["legs"][1]["end_spot_id"] == end_id
+            assert len(route_calls) == 3
+
+            multi_cached_resp = client.post(
+                "/navigate/osm",
+                json={
+                    "start_spot_id": start_id,
+                    "via_spot_ids": [via_id],
+                    "end_spot_id": end_id,
+                    "transport": "walk",
+                },
+            )
+            assert multi_cached_resp.status_code == 200
+            assert multi_cached_resp.json() == multi_data
+            assert len(route_calls) == 3
+
             reverse_resp = client.post(
                 "/navigate/osm",
                 json={
@@ -135,7 +181,7 @@ def main():
                 },
             )
             assert reverse_resp.status_code == 200
-            assert len(route_calls) == 2
+            assert len(route_calls) == 4
 
             bike_resp = client.post(
                 "/navigate/osm",
@@ -146,20 +192,22 @@ def main():
                 },
             )
             assert bike_resp.status_code == 200
-            assert len(route_calls) == 3
+            assert len(route_calls) == 5
 
             with Session(engine) as session:
                 route_caches = session.exec(select(RouteCache)).all()
-                assert len(route_caches) == 3
+                assert len(route_caches) == 4
 
             required_compat_fields = {
                 "city",
                 "transport",
                 "start_spot_id",
                 "end_spot_id",
+                "via_spot_ids",
                 "node_ids",
                 "path_coords",
                 "total_distance_m",
+                "legs",
             }
             assert required_compat_fields.issubset(set(ok_data.keys()))
 
